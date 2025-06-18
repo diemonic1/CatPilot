@@ -1087,13 +1087,13 @@ WShell.Run("notepad.exe")""")
 
         self.vsb.pack(side="right", fill="y", ipadx=1, anchor="n")
 
-        leftScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg="#FF00FC", highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
+        leftScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
         leftScroll.pack(side="left", fill="x", expand=True, anchor="n")
 
         self.myCanvas.pack(side="left", anchor="n")
         self.myCanvas.create_window((0, 0), window=self.frame, anchor="n", tags="self.frame")
 
-        rightScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg="#00FFCC", highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
+        rightScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
         rightScroll.pack(side="left", fill="x", expand=True, anchor="n")
 
         self.frame.bind("<Configure>", self.onFrameConfigure)
