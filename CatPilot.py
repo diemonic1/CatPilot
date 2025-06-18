@@ -107,16 +107,34 @@ UpdateSettings()
 #endregion
 
 # region Localization
+languagesList = ["English"]
 localizationJson = None
 
 def Localize(key):
     global localizationJson
-    if localizationJson == None:
-        f = open('localization.json', encoding='utf-8')
-        localizationJson = json.load(f)
-        f.close()
+    global languagesList
+    global LANGUAGE
 
-    return localizationJson[LANGUAGE][key]
+    if localizationJson == None:
+        try:
+            f = open('localization.json', encoding='utf-8')
+            localizationJson = json.load(f)
+            f.close()
+
+            languagesList = []
+
+            for keyL in localizationJson.keys():
+                languagesList.append(keyL)
+
+        except Exception:
+            Notify('Not find file localization.json')
+
+    try:
+        return localizationJson[LANGUAGE][key]
+    except Exception:
+        Notify('Not find language "' + LANGUAGE + '" or key "' + key + '" in localization.json, set English language')
+        LANGUAGE = "English"
+        return localizationJson[LANGUAGE][key]
 
 # endregion
 
@@ -364,7 +382,7 @@ class SimpleLineNumberedTextbox(customtkinter.CTkFrame):
                                                     activate_scrollbars=False, font=("Helvetika", 17), height=210)
 
         self.textbox = customtkinter.CTkTextbox(self, wrap="none", corner_radius=0, pady=7, border_spacing=0,
-                                                width=960, height=210, font=("Helvetika", 17))
+                                                width=960, height=210, font=("Helvetika", 17), text_color="#ffffff")
 
         self.line_number.pack(side="left", fill="both", expand=True)
         self.textbox.pack(side="left", fill="both", expand=True)
@@ -415,11 +433,10 @@ class SimpleLineNumberedTextbox(customtkinter.CTkFrame):
     def _update_comments(self, event=None):
         lines = self.textbox.get("1.0", "end-1c").split("\n")
         for i in range(len(lines)):
-            self.textbox.tag_add("t" + str(i+1), str(i+1) + '.0', str(i+1) + '.end lineend')
-            if len(lines[i]) > 0 and lines[i][0] == "'":
+            if len(lines[i]) > 0 and "'" in lines[i]:
+                ind = lines[i].index("'")
+                self.textbox.tag_add("t" + str(i+1), str(i+1) + '.' + str(ind), str(i+1) + '.end lineend')
                 self.textbox.tag_config("t" + str(i+1), foreground=GREEN_COLOR)
-            else:
-                self.textbox.tag_config("t" + str(i+1), foreground="#ffffff")
 
     def insert(self, text):
         self.textbox.insert(tkinter.INSERT, text)
@@ -615,9 +632,8 @@ class SettingsWindow(customtkinter.CTkToplevel):
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
-    OptionList = ["English", "Русский"]
-
     def __init__(self, parent):
+        global languagesList
         super().__init__(parent)
         self.geometry('1270x790')
         self.title(Localize("settings"))
@@ -629,7 +645,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         CTkLabel(self, text=Localize("GeneralSettings"), text_color=GREEN_COLOR).grid(row=0, column=0, pady=10, padx=20)
 
         CTkLabel(self, text=Localize("language")).grid(row=1, column=0, pady=10, padx=20)
-        opt = customtkinter.CTkOptionMenu(self, values=self.OptionList, variable=variable)
+        opt = customtkinter.CTkOptionMenu(self, values=languagesList, variable=variable)
         opt.configure(width=15, font=("Arial", 12))
         opt.grid(sticky="W", row=1, column=1)
 
