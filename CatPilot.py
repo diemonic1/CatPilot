@@ -1076,7 +1076,7 @@ def FlaskMain(page):
     if str(page) == "favicon.ico" or str(page) == "robots.txt":
         return "",200
 
-    if str(page) == "Call":
+    if str(page) == "Call" or str(page) == "C":
         return "Ok", 200
 
     result = StartTask(str(page).replace(" ", SPACE_SYMBOL))
