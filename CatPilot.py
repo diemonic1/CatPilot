@@ -656,7 +656,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
     def __init__(self, parent):
         global languagesList
         super().__init__(parent)
-        self.geometry('1270x790')
+        self.geometry('1270x900')
         self.title(Localize("settings"))
         self.after(210, lambda: self.iconbitmap(ICON))
 
@@ -750,13 +750,17 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(AdditionalURLLabel, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AdditionalURLEntry, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        customtkinter.CTkLabel(self, text=Localize("afterSave1") + " " + PROGRAM_NAME + " " + Localize("afterSave2"), text_color=REG_HIGH_COLOR, font=("Arial", 14)).grid(row=13, column=0, pady=10, padx=20)
+        customtkinter.CTkLabel(self, text=Localize("AutoStart"), wraplength=300,
+                               text_color=GREEN_COLOR, font=("Arial", 14)).grid(row=13, column=0, pady=10, padx=20)
+
+        customtkinter.CTkLabel(self, text=Localize("afterSave1") + " " + PROGRAM_NAME + " " + Localize("afterSave2"), text_color=REG_HIGH_COLOR, font=("Arial", 14))\
+            .grid(row=14, column=0, pady=10, padx=20)
 
         saveButton = customtkinter.CTkButton(self, text=Localize('saveAll'), command= lambda: self.SaveSettings(host_s.get(), port_s.get(),
                                                                                                    notify_check_var.get(), traySetting_check_var.get(),
                                                                                                    variable.get(), BlackListShowCommandsInBot_s.get("1.0", customtkinter.END),
                                                                                                    AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get()))
-        saveButton.grid(row=14, column=0, pady=10, padx=20)
+        saveButton.grid(row=15, column=0, pady=10, padx=20)
         ToolTip(saveButton, msg=Localize("saveButtonTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
 class LogWindow(customtkinter.CTkToplevel):

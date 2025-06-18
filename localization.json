@@ -54,7 +54,8 @@
         "CheckWorkURLLabel": "Tunnel health check",
         "AdditionalURLLabel": "Additional request URLs",
         "AdditionalURLResponse": "Additional URL Server response",
-        "DeleteTaskQ": "Delete the script? It cannot be restored!"
+        "DeleteTaskQ": "Delete the script? It cannot be restored!",
+        "AutoStart": "If you want the program to start automatically when Windows starts, create an application shortcut (CatPilot.exe) and put it in the Windows startup folder"
     },
     "Русский": {
         "success": "(успех)",
@@ -111,6 +112,7 @@
         "CheckWorkURLLabel": "Проверка работоспособности туннеля",
         "AdditionalURLLabel": "URL дополнительного запроса",
         "AdditionalURLResponse": "Ответ сервера дополнительного URL",
-        "DeleteTaskQ": "Удалить скрипт? Его нельзя будет восстановить!"
+        "DeleteTaskQ": "Удалить скрипт? Его нельзя будет восстановить!",
+        "AutoStart": "Если вы хотите, чтобы программа запускалась автоматически при старте Windows, создать ярлык приложения (CatPilot.exe) и поместите его в папку автозагрузки Windows"
     }
 }
