@@ -377,11 +377,11 @@ class SimpleLineNumberedTextbox(customtkinter.CTkFrame):
     def __init__(self, master, parent, **kwargs):
         super().__init__(master, **kwargs)
 
-        self.line_number = customtkinter.CTkTextbox(self, width=25, text_color=WHITE_GREY_COLOR,
+        self.line_number = customtkinter.CTkTextbox(self, width=25, text_color=WHITE_GREY_COLOR, fg_color="#1d1e1e",
                                                     wrap="none", corner_radius=0, pady=7, border_spacing=0,
                                                     activate_scrollbars=False, font=("Helvetika", 17), height=210)
 
-        self.textbox = customtkinter.CTkTextbox(self, wrap="none", corner_radius=0, pady=7, border_spacing=0,
+        self.textbox = customtkinter.CTkTextbox(self, wrap="none", corner_radius=0, pady=7, border_spacing=0, fg_color="#1d1e1e",
                                                 width=960, height=210, font=("Helvetika", 17), text_color="#ffffff")
 
         self.line_number.pack(side="left", fill="both", expand=True)
@@ -644,12 +644,12 @@ class SettingsWindow(customtkinter.CTkToplevel):
 
         CTkLabel(self, text=Localize("GeneralSettings"), text_color=GREEN_COLOR).grid(row=0, column=0, pady=10, padx=20)
 
-        CTkLabel(self, text=Localize("language")).grid(row=1, column=0, pady=10, padx=20)
+        CTkLabel(self, text=Localize("language"), text_color="#ffffff").grid(row=1, column=0, pady=10, padx=20)
         opt = customtkinter.CTkOptionMenu(self, values=languagesList, variable=variable)
         opt.configure(width=15, font=("Arial", 12))
         opt.grid(sticky="W", row=1, column=1)
 
-        hostlabel = CTkLabel(self, text='host URL')
+        hostlabel = CTkLabel(self, text='host URL', text_color="#ffffff")
         hostlabel.grid(row=2, column=0, pady=10, padx=20)
         host_s = CTkEntry(self, width=150, font=("Arial", 14))
         host_s.grid(sticky="W", row=2, column=1)
@@ -657,7 +657,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(hostlabel, msg=Localize("hostTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(host_s, msg=Localize("hostTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        portlabel = CTkLabel(self, text='PORT')
+        portlabel = CTkLabel(self, text='PORT', text_color="#ffffff")
         portlabel.grid(row=3, column=0, pady=10, padx=20)
         port_s = CTkEntry(self, width=150, font=("Arial", 14))
         port_s.grid(sticky="W", row=3, column=1)
@@ -665,7 +665,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(portlabel, msg=Localize("portTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(port_s, msg=Localize("portTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        notifyLabel = CTkLabel(self, text=Localize("notify"))
+        notifyLabel = CTkLabel(self, text=Localize("notify"), text_color="#ffffff")
         notifyLabel.grid(row=4, column=0, pady=10, padx=20)
         notify_check_var = customtkinter.StringVar(value=str(showNotifications))
         notify_checkbox = customtkinter.CTkCheckBox(self, text="",
@@ -674,7 +674,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(notifyLabel, msg=Localize("notifyTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(notify_checkbox, msg=Localize("notifyTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        traySettingLabel = CTkLabel(self, text=Localize("traySetting"))
+        traySettingLabel = CTkLabel(self, text=Localize("traySetting"), text_color="#ffffff")
         traySettingLabel.grid(row=5, column=0, pady=10, padx=20)
         traySetting_check_var = customtkinter.StringVar(value=str(closeToTrayOnStart))
         traySetting_checkbox = customtkinter.CTkCheckBox(self, text="",
@@ -685,7 +685,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
 
         CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=6, column=0, pady=10, padx=20)
 
-        BOTtokenLabel = CTkLabel(self, text='BOT token')
+        BOTtokenLabel = CTkLabel(self, text='BOT token', text_color="#ffffff")
         BOTtokenLabel.grid(row=7, column=0, pady=10, padx=20)
         TG_TOKEN_s = CTkEntry(self, width=400, font=("Arial", 14))
         TG_TOKEN_s.grid(sticky="W", row=7, column=1)
@@ -693,7 +693,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(BOTtokenLabel, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(TG_TOKEN_s, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        AllowedTG_IDsLabel = CTkLabel(self, text=Localize("AllowedTG_IDs"))
+        AllowedTG_IDsLabel = CTkLabel(self, text=Localize("AllowedTG_IDs"), text_color="#ffffff")
         AllowedTG_IDsLabel.grid(row=8, column=0, pady=10, padx=20)
         AllowedTG_IDs_s = CTkEntry(self, width=500, font=("Arial", 14))
         AllowedTG_IDs_s.grid(sticky="W", row=8, column=1)
@@ -701,7 +701,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(AllowedTG_IDsLabel, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AllowedTG_IDs_s, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        BlackListShowCommandsInBotLabel = CTkLabel(self, text=Localize("BlackListShowCommandsInBot"))
+        BlackListShowCommandsInBotLabel = CTkLabel(self, text=Localize("BlackListShowCommandsInBot"), text_color="#ffffff")
         BlackListShowCommandsInBotLabel.grid(row=9, column=0, pady=10, padx=20)
         BlackListShowCommandsInBot_s = CTkTextbox(self, width=800, height=80, font=("Arial", 14))
         BlackListShowCommandsInBot_s.grid(sticky="W", row=9, column=1)
@@ -711,7 +711,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
 
         CTkLabel(self, text=Localize("AdditionalSettings"), text_color=GREEN_COLOR).grid(row=10, column=0, pady=10, padx=20)
 
-        CheckWorkURLLabel = CTkLabel(self, text=Localize("CheckWorkURLLabel"))
+        CheckWorkURLLabel = CTkLabel(self, text=Localize("CheckWorkURLLabel"), text_color="#ffffff")
         CheckWorkURLLabel.grid(row=11, column=0, pady=10, padx=20)
         CheckWorkURLEntry = CTkEntry(self, width=400, font=("Arial", 14))
         CheckWorkURLEntry.grid(sticky="W", row=11, column=1)
@@ -720,7 +720,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(CheckWorkURLLabel, msg=Localize("CheckWorkURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(CheckWorkURLEntry, msg=Localize("CheckWorkURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        AdditionalURLLabel = CTkLabel(self, text=Localize("AdditionalURLLabel"))
+        AdditionalURLLabel = CTkLabel(self, text=Localize("AdditionalURLLabel"), text_color="#ffffff")
         AdditionalURLLabel.grid(row=12, column=0, pady=10, padx=20)
         AdditionalURLEntry = CTkEntry(self, width=400, font=("Arial", 14))
         AdditionalURLEntry.grid(sticky="W", row=12, column=1)
@@ -912,9 +912,9 @@ class AppWindow(customtkinter.CTk):
 
         leftFrame = CTkFrame(frame, bg_color="transparent", fg_color=FOREGROUND_COLOR)
 
-        scNumber = CTkLabel(leftFrame, text=Localize("scNumber") + str(number + 1), font=("Arial", 17))
-        URLlabel = CTkLabel(leftFrame, text=Localize("URL"), font=("Arial", 17))
-        Namelabel = CTkLabel(leftFrame, text=Localize("Name"), font=("Arial", 17))
+        scNumber = CTkLabel(leftFrame, text=Localize("scNumber") + str(number + 1), font=("Arial", 17), text_color="#ffffff")
+        URLlabel = CTkLabel(leftFrame, text=Localize("URL"), font=("Arial", 17), text_color="#ffffff")
+        Namelabel = CTkLabel(leftFrame, text=Localize("Name"), font=("Arial", 17), text_color="#ffffff")
 
         leftFrame.grid(row=0, column=0, pady=3, padx=5)
 
@@ -940,7 +940,7 @@ class AppWindow(customtkinter.CTk):
         nameEntry.insert(0, settingsFromFile["name"])
         ToolTip(nameEntry, msg=Localize("nameTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        notifyLabel = CTkLabel(leftFrame, text=Localize("Notify"), font=("Arial", 17))
+        notifyLabel = CTkLabel(leftFrame, text=Localize("Notify"), font=("Arial", 17), text_color="#ffffff")
         notifyLabel.grid(row=3, column=0, pady=1, padx=5)
 
         notify_check_var = customtkinter.StringVar(value=str(settingsFromFile["notify"]) if "notify" in settingsFromFile.keys() else "True")
@@ -970,7 +970,7 @@ class AppWindow(customtkinter.CTk):
 
         centerFrame = CTkFrame(frame, bg_color="transparent", fg_color=FOREGROUND_COLOR)
 
-        label3 = CTkLabel(centerFrame, text=Localize("VBSScript"), font=("Arial", 17))
+        label3 = CTkLabel(centerFrame, text=Localize("VBSScript"), font=("Arial", 17), text_color="#ffffff")
         label3.grid(row=0, column=0, pady=1, padx=5)
         ToolTip(label3, msg=Localize("VBSScriptTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
@@ -993,9 +993,9 @@ WShell.Run("notepad.exe")""")
 
         centerFrame.grid(row=0, column=1, pady=1, padx=5)
 
-        rightFrame = CTkFrame(frame)
+        rightFrame = CTkFrame(frame, fg_color=FOREGROUND_COLOR)
 
-        label4 = CTkLabel(rightFrame, text=Localize("buttons"), font=("Arial", 17))
+        label4 = CTkLabel(rightFrame, text=Localize("buttons"), font=("Arial", 17), text_color="#ffffff")
         label4.grid(row=0, column=0, pady=1, padx=5)
         ToolTip(label4, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
 
@@ -1006,7 +1006,7 @@ WShell.Run("notepad.exe")""")
         opt1 = MultiColumnOptionMenu(rightFrame, options=buttons, _on_mousewheel=self._on_mousewheel, default_option=vb1, command=lambda e: self.typing(None))
         opt1.grid(row=1, column=0, padx=5, pady=5)
 
-        labelPlus1 = CTkLabel(rightFrame, text="+", font=("Arial", 17))
+        labelPlus1 = CTkLabel(rightFrame, text="+", font=("Arial", 17), text_color="#ffffff")
         labelPlus1.grid(row=2, column=0, pady=1, padx=5)
         labelPlus1.bind("<MouseWheel>", self._on_mousewheel)
         ToolTip(labelPlus1, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
@@ -1014,7 +1014,7 @@ WShell.Run("notepad.exe")""")
         opt2 = MultiColumnOptionMenu(rightFrame, options=buttons, _on_mousewheel=self._on_mousewheel, default_option=vb2, command=lambda e: self.typing(None))
         opt2.grid(row=3, column=0, padx=5, pady=5)
 
-        labelPlus2 = CTkLabel(rightFrame, text="+", font=("Arial", 17))
+        labelPlus2 = CTkLabel(rightFrame, text="+", font=("Arial", 17), text_color="#ffffff")
         labelPlus2.grid(row=4, column=0, pady=1, padx=5)
         labelPlus2.bind("<MouseWheel>", self._on_mousewheel)
         ToolTip(labelPlus2, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
@@ -1045,7 +1045,7 @@ WShell.Run("notepad.exe")""")
         self.title(PROGRAM_NAME)
         self.iconbitmap(default=ICON)
 
-        frame = customtkinter.CTkFrame(self)
+        frame = customtkinter.CTkFrame(self, fg_color=BACKGROUND_COLOR)
         customtkinter.CTkButton(frame, text=Localize("settings"), command=self.open_SettingsWindow).grid(row=0, column=0, pady=10, padx=5)
         customtkinter.CTkButton(frame, text=Localize("log"), command=self.open_LogWindow).grid(row=0, column=1, pady=10, padx=5)
 
