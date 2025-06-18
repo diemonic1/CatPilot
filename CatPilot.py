@@ -4,6 +4,7 @@ import customtkinter
 from customtkinter import *
 from tkinter.tix import *
 import tkinter as tk
+from tkinter.messagebox import askyesno
 from contextlib import suppress
 from enum import Enum, auto
 from typing import Any, Callable
@@ -852,31 +853,40 @@ class AppWindow(customtkinter.CTk):
 
     def DeleteTask(self, name):
         if name != "":
-            finded = False
+            result = askyesno(title=Localize("DeleteTaskQ"), message=Localize("DeleteTaskQ"))
+            if result:
+                finded = False
 
-            for filename in os.listdir(os.getcwd() + "\Tasks"):
-                f = os.path.join(os.getcwd() + "\Tasks\\", filename)
-                if os.path.isfile(f) and name + ".vbs" in filename:
-                    finded = True
+                for filename in os.listdir(os.getcwd() + "\Tasks"):
+                    f = os.path.join(os.getcwd() + "\Tasks\\", filename)
+                    if os.path.isfile(f) and name + ".vbs" in filename:
+                        finded = True
 
-            if finded:
-                os.remove(os.getcwd() + "\Tasks\\" + name + ".vbs")
+                if finded:
+                    os.remove(os.getcwd() + "\Tasks\\" + name + ".vbs")
 
-            finded = False
+                finded = False
 
-            for filename in os.listdir(os.getcwd() + "\Tasks"):
-                f = os.path.join(os.getcwd() + "\Tasks\\", filename)
-                if os.path.isfile(f) and name + ".settings" in filename:
-                    finded = True
+                for filename in os.listdir(os.getcwd() + "\Tasks"):
+                    f = os.path.join(os.getcwd() + "\Tasks\\", filename)
+                    if os.path.isfile(f) and name + ".settings" in filename:
+                        finded = True
 
-            if finded:
-                os.remove(os.getcwd() + "\Tasks\\" + name + ".settings")
+                if finded:
+                    os.remove(os.getcwd() + "\Tasks\\" + name + ".settings")
+            else:
+                return
+
+        for widget in self.frame.winfo_children():
+            widget.destroy()
 
         self.allTasksUI = []
-        self.frame.destroy()
-        self.frame = customtkinter.CTkFrame(self.myCanvas)
-        self.myCanvas.create_window((4, 4), window=self.frame, anchor="n", tags="self.frame")
         self.ReadSavedTasks()
+        #self.frame.destroy()
+        #self.frame = customtkinter.CTkFrame(self.myCanvas)
+        #self.myCanvas.create_window((0, 0), window=self.frame, anchor="n", tags="self.frame")
+        #self.frame.bind("<Configure>", self.onFrameConfigure)
+        #self.frame.bind("<MouseWheel>", self._on_mousewheel)
 
     def AddTaskUI(self, taskURL, scriptText, settingsFromFile, number):
         if settingsFromFile == None:
