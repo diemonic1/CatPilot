@@ -1114,6 +1114,8 @@ def AppServerHandler():
                     else:
                         sleep(60)
                 except Exception as e:
+                    logToFile("RestartTunnel")
+                    launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
                     sleep(10)
 
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
