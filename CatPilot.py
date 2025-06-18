@@ -11,6 +11,7 @@ from typing import Any, Callable
 from tkinter.scrolledtext import ScrolledText
 import psutil
 
+import ctypes
 import difflib
 import re
 import pyautogui
@@ -259,6 +260,26 @@ def StartTask(taskURL):
     logToFile(message)
 
     return message
+#endregion
+
+#region get_windows_scaling
+
+def get_windows_scaling():
+    try:
+        # Для Windows 8.1 и выше
+        ctypes.windll.shcore.SetProcessDpiAwareness(1)
+        scale_factor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
+    except:
+        # Для более старых версий Windows
+        try:
+            hdc = ctypes.windll.user32.GetDC(0)
+            LOGPIXELSX = 88
+            scale_factor = ctypes.windll.gdi32.GetDeviceCaps(hdc, LOGPIXELSX) / 96
+            ctypes.windll.user32.ReleaseDC(0, hdc)
+        except:
+            scale_factor = 1.0
+    return scale_factor
+
 #endregion
 
 #region MultiColumnDropdown
@@ -1045,7 +1066,9 @@ WShell.Run("notepad.exe")""")
         self.title(PROGRAM_NAME)
         self.iconbitmap(default=ICON)
 
-        frame = customtkinter.CTkFrame(self, fg_color=BACKGROUND_COLOR)
+        self.configure(fg_color=BACKGROUND_COLOR)
+
+        frame = customtkinter.CTkFrame(self, fg_color=FOREGROUND_COLOR)
         customtkinter.CTkButton(frame, text=Localize("settings"), command=self.open_SettingsWindow).grid(row=0, column=0, pady=10, padx=5)
         customtkinter.CTkButton(frame, text=Localize("log"), command=self.open_LogWindow).grid(row=0, column=1, pady=10, padx=5)
 
@@ -1058,19 +1081,19 @@ WShell.Run("notepad.exe")""")
 
         #region SetWindow
         self.myCanvas = customtkinter.CTkCanvas(self, width=1515, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
-        self.frame = customtkinter.CTkFrame(self.myCanvas, width=1970, fg_color=BACKGROUND_COLOR)
+        self.frame = customtkinter.CTkFrame(self.myCanvas, width=1170, fg_color=BACKGROUND_COLOR)
         self.vsb = customtkinter.CTkScrollbar(self, command=self.myCanvas.yview, fg_color=BACKGROUND_COLOR, minimum_pixel_length=25)
         self.myCanvas.configure(yscrollcommand=self.vsb.set)
 
         self.vsb.pack(side="right", fill="y", ipadx=1, anchor="n")
 
-        leftScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
+        leftScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg="#FF00FC", highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
         leftScroll.pack(side="left", fill="x", expand=True, anchor="n")
 
         self.myCanvas.pack(side="left", anchor="n")
         self.myCanvas.create_window((0, 0), window=self.frame, anchor="n", tags="self.frame")
 
-        rightScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
+        rightScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg="#00FFCC", highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
         rightScroll.pack(side="left", fill="x", expand=True, anchor="n")
 
         self.frame.bind("<Configure>", self.onFrameConfigure)
@@ -1082,7 +1105,20 @@ WShell.Run("notepad.exe")""")
 
         #endregion
 
-        self.geometry("1555x750")
+        scaling_factor = get_windows_scaling()
+
+        if scaling_factor == 1:
+            self.geometry("1555x750")
+        elif scaling_factor == 1.25:
+            self.geometry("1255x600")
+            customtkinter.set_widget_scaling(0.8)
+        elif scaling_factor == 1.5:
+            self.geometry("1055x500")
+            customtkinter.set_widget_scaling(0.6)
+        elif scaling_factor == 0.75:
+            self.geometry("1755x700")
+            customtkinter.set_widget_scaling(1.2)
+
         self.protocol('WM_DELETE_WINDOW', self.withdraw_window)
 
         self.ReadSavedTasks()
@@ -1091,6 +1127,7 @@ WShell.Run("notepad.exe")""")
             self.withdraw_window()
 
         logToFile(Localize("runOn") + " " + HOST + ":" + str(PORT))
+
         self.mainloop()
 #endregion
 
