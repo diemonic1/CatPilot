@@ -55,7 +55,6 @@ FOREGROUND_COLOR = "#2b2b2b"
 
 #region Settings
 
-HOST = ""
 PORT = ""
 showNotifications = ""
 closeToTrayOnStart = ""
@@ -75,14 +74,13 @@ for filename in os.listdir(os.getcwd()):
 
 if find_settings == False:
     file = open('Settings.json', 'a', encoding='utf-8')
-    file.write('{ "HOST": "192.168.0.107", "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "BlackListShowCommandsInBot": "", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "" }')
+    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "BlackListShowCommandsInBot": "", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "" }')
     file.close()
 
 def UpdateSettings():
     f = open('Settings.json', encoding='utf-8')
     data = json.load(f)
     f.close()
-    global HOST
     global PORT
     global showNotifications
     global closeToTrayOnStart
@@ -92,7 +90,6 @@ def UpdateSettings():
     global TG_TOKEN
     global CheckWorkURL
     global AdditionalURL
-    HOST = data['HOST']
     PORT = data['PORT']
     showNotifications = data['showNotifications']
     closeToTrayOnStart = data['closeToTrayOnStart']
@@ -642,10 +639,10 @@ class ToolTip(tk.Toplevel):
 possibleTasksForBot = {}
 
 class SettingsWindow(customtkinter.CTkToplevel):
-    def SaveSettings(self, host_s, port_s, notify_s, tray_s, language, BlackListShowCommandsInBot_s, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s):
+    def SaveSettings(self, port_s, notify_s, tray_s, language, BlackListShowCommandsInBot_s, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s):
         file = open('Settings.json', 'w', encoding='utf-8')
         file.write(
-            '{ "HOST": "' + str(host_s) + '", "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "BlackListShowCommandsInBot": "' + str(BlackListShowCommandsInBot_s).rstrip() + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '"  }')
+            '{ "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "BlackListShowCommandsInBot": "' + str(BlackListShowCommandsInBot_s).rstrip() + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '"  }')
         file.close()
 
         UpdateSettings()
@@ -656,7 +653,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
     def __init__(self, parent):
         global languagesList
         super().__init__(parent)
-        self.geometry('1270x900')
+        self.geometry('1270x790')
         self.title(Localize("settings"))
         self.after(210, lambda: self.iconbitmap(ICON))
 
@@ -670,54 +667,46 @@ class SettingsWindow(customtkinter.CTkToplevel):
         opt.configure(width=15, font=("Arial", 12))
         opt.grid(sticky="W", row=1, column=1)
 
-        hostlabel = CTkLabel(self, text='host URL', text_color="#ffffff")
-        hostlabel.grid(row=2, column=0, pady=10, padx=20)
-        host_s = CTkEntry(self, width=150, font=("Arial", 14))
-        host_s.grid(sticky="W", row=2, column=1)
-        host_s.insert(0, str(HOST))
-        ToolTip(hostlabel, msg=Localize("hostTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(host_s, msg=Localize("hostTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
         portlabel = CTkLabel(self, text='PORT', text_color="#ffffff")
-        portlabel.grid(row=3, column=0, pady=10, padx=20)
+        portlabel.grid(row=2, column=0, pady=10, padx=20)
         port_s = CTkEntry(self, width=150, font=("Arial", 14))
-        port_s.grid(sticky="W", row=3, column=1)
+        port_s.grid(sticky="W", row=2, column=1)
         port_s.insert(0, str(PORT))
         ToolTip(portlabel, msg=Localize("portTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(port_s, msg=Localize("portTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
         notifyLabel = CTkLabel(self, text=Localize("notify"), text_color="#ffffff")
-        notifyLabel.grid(row=4, column=0, pady=10, padx=20)
+        notifyLabel.grid(row=3, column=0, pady=10, padx=20)
         notify_check_var = customtkinter.StringVar(value=str(showNotifications))
         notify_checkbox = customtkinter.CTkCheckBox(self, text="",
                                              variable=notify_check_var, onvalue="True", offvalue="False")
-        notify_checkbox.grid(sticky="W", row=4, column=1)
+        notify_checkbox.grid(sticky="W", row=3, column=1)
         ToolTip(notifyLabel, msg=Localize("notifyTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(notify_checkbox, msg=Localize("notifyTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
         traySettingLabel = CTkLabel(self, text=Localize("traySetting"), text_color="#ffffff")
-        traySettingLabel.grid(row=5, column=0, pady=10, padx=20)
+        traySettingLabel.grid(row=4, column=0, pady=10, padx=20)
         traySetting_check_var = customtkinter.StringVar(value=str(closeToTrayOnStart))
         traySetting_checkbox = customtkinter.CTkCheckBox(self, text="",
                                              variable=traySetting_check_var, onvalue="True", offvalue="False")
-        traySetting_checkbox.grid(sticky="W", row=5, column=1)
+        traySetting_checkbox.grid(sticky="W", row=4, column=1)
         ToolTip(traySettingLabel, msg=Localize("traySettingTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(traySetting_checkbox, msg=Localize("traySettingTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=6, column=0, pady=10, padx=20)
+        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=5, column=0, pady=10, padx=20)
 
         BOTtokenLabel = CTkLabel(self, text='BOT token', text_color="#ffffff")
-        BOTtokenLabel.grid(row=7, column=0, pady=10, padx=20)
+        BOTtokenLabel.grid(row=6, column=0, pady=10, padx=20)
         TG_TOKEN_s = CTkEntry(self, width=400, font=("Arial", 14))
-        TG_TOKEN_s.grid(sticky="W", row=7, column=1)
+        TG_TOKEN_s.grid(sticky="W", row=6, column=1)
         TG_TOKEN_s.insert(0, str(TG_TOKEN))
         ToolTip(BOTtokenLabel, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(TG_TOKEN_s, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
         AllowedTG_IDsLabel = CTkLabel(self, text=Localize("AllowedTG_IDs"), text_color="#ffffff")
-        AllowedTG_IDsLabel.grid(row=8, column=0, pady=10, padx=20)
+        AllowedTG_IDsLabel.grid(row=7, column=0, pady=10, padx=20)
         AllowedTG_IDs_s = CTkEntry(self, width=500, font=("Arial", 14))
-        AllowedTG_IDs_s.grid(sticky="W", row=8, column=1)
+        AllowedTG_IDs_s.grid(sticky="W", row=7, column=1)
         AllowedTG_IDs_s.insert(0, str(AllowedTG_IDs))
         ToolTip(AllowedTG_IDsLabel, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AllowedTG_IDs_s, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
@@ -750,17 +739,17 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(AdditionalURLLabel, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AdditionalURLEntry, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        customtkinter.CTkLabel(self, text=Localize("AutoStart"), wraplength=300,
-                               text_color=GREEN_COLOR, font=("Arial", 14)).grid(row=13, column=0, pady=10, padx=20)
+        customtkinter.CTkLabel(self, text=Localize("AutoStart"), wraplength=500,
+                               text_color=GREEN_COLOR, font=("Arial", 14)).grid(row=13, column=1, pady=10, padx=20)
 
         customtkinter.CTkLabel(self, text=Localize("afterSave1") + " " + PROGRAM_NAME + " " + Localize("afterSave2"), text_color=REG_HIGH_COLOR, font=("Arial", 14))\
-            .grid(row=14, column=0, pady=10, padx=20)
+            .grid(row=13, column=0, pady=10, padx=20)
 
-        saveButton = customtkinter.CTkButton(self, text=Localize('saveAll'), command= lambda: self.SaveSettings(host_s.get(), port_s.get(),
+        saveButton = customtkinter.CTkButton(self, text=Localize('saveAll'), command= lambda: self.SaveSettings(port_s.get(),
                                                                                                    notify_check_var.get(), traySetting_check_var.get(),
                                                                                                    variable.get(), BlackListShowCommandsInBot_s.get("1.0", customtkinter.END),
                                                                                                    AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get()))
-        saveButton.grid(row=15, column=0, pady=10, padx=20)
+        saveButton.grid(row=14, column=0, pady=10, padx=20)
         ToolTip(saveButton, msg=Localize("saveButtonTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
 class LogWindow(customtkinter.CTkToplevel):
@@ -1130,7 +1119,7 @@ WShell.Run("notepad.exe")""")
         if closeToTrayOnStart == "True":
             self.withdraw_window()
 
-        logToFile(Localize("runOn") + " " + HOST + ":" + str(PORT))
+        logToFile(Localize("runOn") + " " + str(PORT))
 
         self.mainloop()
 #endregion
@@ -1150,7 +1139,7 @@ def FlaskMain(page):
     return result, 200
 
 def flask_main():
-    app.run(host=HOST,port=PORT)
+    app.run(host="0.0.0.0",port=PORT)
 #endregion
 
 #region AppServerHandler
