@@ -141,6 +141,16 @@ Set WShell = CreateObject("WScript.Shell")
 
 WShell.Run "rundll32.exe powrprof.dll,SetSuspendState Sleep"
 ```
+### Запустить две программы и открыть сайт  
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run Chr(34) & "C:\Program Files (x86)\Steam\steam.exe"
+WShell.Run("S:\Oculus\Support\oculus-client\OculusClient.exe")
+
+WShell.Run "https://www.google.com/"
+```
 ### Следующий трек/видео   
 | nexttrack |
 |:----------|
