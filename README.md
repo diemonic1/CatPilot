@@ -231,8 +231,6 @@ Set WShell = CreateObject("WScript.Shell")
 
 WShell.Run "taskkill /f /im clo.exe", 0
 WShell.Run "S:\Programs\CatPilot\StartTunnel.cmd", 0
-
-Set WShell = Nothing
 ```
 
 > Здесь закрывается процесс clo.exe, после чего запускается .cmd файл, заново запускающий туннель с моим токеном:
