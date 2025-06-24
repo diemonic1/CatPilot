@@ -2,7 +2,6 @@ from time import sleep
 
 import customtkinter
 from customtkinter import *
-from tkinter.tix import *
 import tkinter as tk
 from tkinter.messagebox import askyesno
 from contextlib import suppress
@@ -457,7 +456,7 @@ class SimpleLineNumberedTextbox(customtkinter.CTkFrame):
                 self.textbox.tag_config("t" + str(i+1), foreground=GREEN_COLOR)
 
     def insert(self, text):
-        self.textbox.insert(tkinter.INSERT, text)
+        self.textbox.insert(tk.INSERT, text)
 
     def yscroll(self, *args):
         first, last = self.textbox.yview()
@@ -715,7 +714,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
         BlackListShowCommandsInBotLabel.grid(row=9, column=0, pady=10, padx=20)
         BlackListShowCommandsInBot_s = CTkTextbox(self, width=800, height=80, font=("Arial", 14))
         BlackListShowCommandsInBot_s.grid(sticky="W", row=9, column=1)
-        BlackListShowCommandsInBot_s.insert(tkinter.INSERT, str(BlackListShowCommandsInBot).rstrip())
+        BlackListShowCommandsInBot_s.insert(tk.INSERT, str(BlackListShowCommandsInBot).rstrip())
         ToolTip(BlackListShowCommandsInBotLabel, msg=Localize("BlackListShowCommandsInBotTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(BlackListShowCommandsInBot_s, msg=Localize("BlackListShowCommandsInBotTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
@@ -765,7 +764,7 @@ class LogWindow(customtkinter.CTkToplevel):
 
         text_area.grid(column=0, pady=10, padx=10)
 
-        text_area.insert(tkinter.INSERT, content)
+        text_area.insert(tk.INSERT, content)
         text_area.configure(state='disabled')
 
 class AppWindow(customtkinter.CTk):
@@ -863,7 +862,7 @@ class AppWindow(customtkinter.CTk):
                     filesToDelete.append(filename)
 
         for file in filesToDelete:
-            os.remove(os.getcwd() + "\Tasks\\" + file)
+            os.remove(os.getcwd() + "\\Tasks\\" + file)
 
         for i in self.allTasksUI:
             url = str(i[0].get()).replace(" ", SPACE_SYMBOL)
@@ -887,23 +886,23 @@ class AppWindow(customtkinter.CTk):
             if result:
                 finded = False
 
-                for filename in os.listdir(os.getcwd() + "\Tasks"):
-                    f = os.path.join(os.getcwd() + "\Tasks\\", filename)
+                for filename in os.listdir(os.getcwd() + "\\Tasks"):
+                    f = os.path.join(os.getcwd() + "\\Tasks\\", filename)
                     if os.path.isfile(f) and name + ".vbs" in filename:
                         finded = True
 
                 if finded:
-                    os.remove(os.getcwd() + "\Tasks\\" + name + ".vbs")
+                    os.remove(os.getcwd() + "\\Tasks\\" + name + ".vbs")
 
                 finded = False
 
-                for filename in os.listdir(os.getcwd() + "\Tasks"):
-                    f = os.path.join(os.getcwd() + "\Tasks\\", filename)
+                for filename in os.listdir(os.getcwd() + "\\Tasks"):
+                    f = os.path.join(os.getcwd() + "\\Tasks\\", filename)
                     if os.path.isfile(f) and name + ".settings" in filename:
                         finded = True
 
                 if finded:
-                    os.remove(os.getcwd() + "\Tasks\\" + name + ".settings")
+                    os.remove(os.getcwd() + "\\Tasks\\" + name + ".settings")
             else:
                 return
 
