@@ -141,6 +141,16 @@ Set WShell = CreateObject("WScript.Shell")
 
 WShell.Run "rundll32.exe powrprof.dll,SetSuspendState Sleep"
 ```
+### Запустить две программы и открыть сайт  
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run Chr(34) & "C:\Program Files (x86)\Steam\steam.exe"
+WShell.Run("S:\Oculus\Support\oculus-client\OculusClient.exe")
+
+WShell.Run "https://www.google.com/"
+```
 ### Следующий трек/видео   
 | nexttrack |
 |:----------|
@@ -231,8 +241,6 @@ Set WShell = CreateObject("WScript.Shell")
 
 WShell.Run "taskkill /f /im clo.exe", 0
 WShell.Run "S:\Programs\CatPilot\StartTunnel.cmd", 0
-
-Set WShell = Nothing
 ```
 
 > Здесь закрывается процесс clo.exe, после чего запускается .cmd файл, заново запускающий туннель с моим токеном:
@@ -244,6 +252,7 @@ clo.exe run
 
 В настройках CatPilot укажите ссылку, по которой к CatPilot можно обратиться вне локальной сети.
 > т.к. я использую cloudpub, у меня эта ссылка выглядит как https://mydomen.cloudpub.ru/Call
+> 
 > у вас будет свой домен, но /Call тоже должно присутствовать - это стандартный запрос для приложения CatPilot
 
 Ваш https://example.yourservice.com/Call будет запрашиваться ежеминутно, ожидая получить ответ 200 "Ok"
