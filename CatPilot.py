@@ -772,6 +772,9 @@ class AppWindow(customtkinter.CTk):
         icon.stop()
         self.after(0, self.deiconify)
 
+    def start_task_from_tray(self, url):
+        return lambda: StartTask(url)
+
     def withdraw_window(self):
         ctypes.windll['uxtheme.dll'][135](1)
 
@@ -783,7 +786,9 @@ class AppWindow(customtkinter.CTk):
 
         for task in self.allTasksUI:
             if task["trayCommand_check_var"].get() == "True":
-                menuItems = menuItems + (item(task["nameEntry"].get(), lambda: StartTask(task["urlEntry"].get())),)
+                name = task["nameEntry"].get()
+                url = task["urlEntry"].get()
+                menuItems = menuItems + (item(name, self.start_task_from_tray(url)),)
 
         menuItems = menuItems + (Menu.SEPARATOR,)
         menuItems = menuItems + (item(Localize("show"), self.show_window),)
