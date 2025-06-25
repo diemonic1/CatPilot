@@ -25,7 +25,6 @@
         "save": "Save",
         "buttons": "Keys",
         "scNumber": "Script №",
-        "BlackListShowCommandsInBot": "Don't show these commands in the bot",
         "SettingsBot": "Bot Settings",
         "AllowedTG_IDs": "Identifiers of telegrams that can send messages",
         "GeneralSettings": "General settings",
@@ -43,7 +42,6 @@
         "traySettingTooltip": "When enabled, the program will collapse into the tray immediately after launch",
         "BOTtokenTooltip": "Enter your telegram bot's token here (it looks like 7582552655:AAHmzfaKaoMnajrk47dLS76S2epa127gJ-0)",
         "AllowedTG_IDsTooltip": "Telegram IDs of users who can write to your telegram bot. Written as \"591845016,1038274625\" (separated by commas, without spaces between commands). You can find out your ID from the @myidbot bot.",
-        "BlackListShowCommandsInBotTooltip": "Commands that the bot will not offer for execution. They are written as \"Pause,Turn off the PC,Put the computer to sleep\" (separated by commas, without spaces between commands)",
         "saveButtonTooltip": "After saving, the program will be restarted",
         "Notify": "Notify",
         "NotifyCheckboxTooltip": "You can disable notification of this script",
@@ -54,7 +52,12 @@
         "AdditionalURLLabel": "Additional request URLs",
         "AdditionalURLResponse": "Additional URL Server response",
         "DeleteTaskQ": "Delete the script? It cannot be restored!",
-        "AutoStart": "If you want the program to start automatically when Windows starts, create an application shortcut (CatPilot.exe) and put it in the Windows startup folder"
+        "AutoStart": "If you want the program to start automatically when Windows starts, create an application shortcut (CatPilot.exe) and put it in the Windows startup folder",
+        "run": "run",
+        "ShowInTG_BOT": "show in tg bot",
+        "ShowInTG_BOTTooltip": "If disabled, it will not be displayed in the Telegram bot when commands are requested",
+        "ShowInTray": "show in tray",
+        "ShowInTrayTooltip": "If disabled, it will not appear in the program's tray menu"
     },
     "Русский": {
         "success": "(успех)",
@@ -82,7 +85,6 @@
         "save": "Сохранить",
         "buttons": "Клавиши",
         "scNumber": "Скрипт №",
-        "BlackListShowCommandsInBot": "Не показывать эти команды в боте",
         "SettingsBot": "Настройки бота",
         "AllowedTG_IDs": "Идентификаторы телеграмм, которые могут присылать сообщения",
         "GeneralSettings": "Общие настройки",
@@ -100,7 +102,6 @@
         "traySettingTooltip": "Когда включено, программа будет сворачиваться в трей сразу после запуска",
         "BOTtokenTooltip": "Введите сюда токен вашего телеграмм бота (имеет вид 7582552655:AAHmzfaKaoMnajrk47dLS76S2epa127gJ-0)",
         "AllowedTG_IDsTooltip": "Телеграмм ID пользователей, которые могут писать вашему телеграмм боту. Записываются как \"591845016,1038274625\" (через запятую, без пробелов между командами). Узнать ваш ID можно у бота @myidbot",
-        "BlackListShowCommandsInBotTooltip": "Команды, которые бот не будет предлагать для исполнения. Записываются как \"Пауза,Выключить ПК,Усыпить компьютер\" (через запятую, без пробелов между командами)",
         "saveButtonTooltip": "После сохранения программа будет перезапущена",
         "Notify": "Уведомление",
         "NotifyCheckboxTooltip": "Можно отключить уведомление об этом скрипте",
@@ -111,6 +112,11 @@
         "AdditionalURLLabel": "URL дополнительного запроса",
         "AdditionalURLResponse": "Ответ сервера дополнительного URL",
         "DeleteTaskQ": "Удалить скрипт? Его нельзя будет восстановить!",
-        "AutoStart": "Если вы хотите, чтобы программа запускалась автоматически при старте Windows, создайте ярлык приложения (CatPilot.exe) и поместите его в папку автозагрузки Windows"
+        "AutoStart": "Если вы хотите, чтобы программа запускалась автоматически при старте Windows, создайте ярлык приложения (CatPilot.exe) и поместите его в папку автозагрузки Windows",
+        "run": "запустить",
+        "ShowInTG_BOT": "тг бот",
+        "ShowInTG_BOTTooltip": "Если отключить, не будет показываться в тг боте при запросе команд",
+        "ShowInTray": "в трее",
+        "ShowInTrayTooltip": "Если отключить, не будет показываться в меню программы в трее"
     }
 }

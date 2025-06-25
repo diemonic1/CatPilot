@@ -1,1 +1,1 @@
-{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "Русский", "BlackListShowCommandsInBot": "", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": ""  }
+{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "Русский", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": ""  }

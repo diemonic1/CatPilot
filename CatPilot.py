@@ -22,7 +22,7 @@ import requests.exceptions
 import threading
 from flask import Flask
 from datetime import datetime
-from pystray import MenuItem as item
+from pystray import MenuItem as item, Menu
 import pystray
 from PIL import Image
 import subprocess
@@ -58,7 +58,6 @@ PORT = ""
 showNotifications = ""
 closeToTrayOnStart = ""
 LANGUAGE = ""
-BlackListShowCommandsInBot = ""
 AllowedTG_IDs = ""
 TG_TOKEN = ""
 CheckWorkURL = ""
@@ -73,7 +72,7 @@ for filename in os.listdir(os.getcwd()):
 
 if find_settings == False:
     file = open('Settings.json', 'a', encoding='utf-8')
-    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "BlackListShowCommandsInBot": "", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "" }')
+    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "" }')
     file.close()
 
 def UpdateSettings():
@@ -84,7 +83,6 @@ def UpdateSettings():
     global showNotifications
     global closeToTrayOnStart
     global LANGUAGE
-    global BlackListShowCommandsInBot
     global AllowedTG_IDs
     global TG_TOKEN
     global CheckWorkURL
@@ -93,7 +91,6 @@ def UpdateSettings():
     showNotifications = data['showNotifications']
     closeToTrayOnStart = data['closeToTrayOnStart']
     LANGUAGE = data['language']
-    BlackListShowCommandsInBot = data['BlackListShowCommandsInBot']
     AllowedTG_IDs = data['AllowedTG_IDs']
     TG_TOKEN = data['TG_TOKEN']
     CheckWorkURL = data['CheckWorkURL']
@@ -638,10 +635,10 @@ class ToolTip(tk.Toplevel):
 possibleTasksForBot = {}
 
 class SettingsWindow(customtkinter.CTkToplevel):
-    def SaveSettings(self, port_s, notify_s, tray_s, language, BlackListShowCommandsInBot_s, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s):
+    def SaveSettings(self, port_s, notify_s, tray_s, language, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s):
         file = open('Settings.json', 'w', encoding='utf-8')
         file.write(
-            '{ "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "BlackListShowCommandsInBot": "' + str(BlackListShowCommandsInBot_s).rstrip() + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '"  }')
+            '{ "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '"  }')
         file.close()
 
         UpdateSettings()
@@ -710,14 +707,6 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(AllowedTG_IDsLabel, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AllowedTG_IDs_s, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        BlackListShowCommandsInBotLabel = CTkLabel(self, text=Localize("BlackListShowCommandsInBot"), text_color="#ffffff")
-        BlackListShowCommandsInBotLabel.grid(row=9, column=0, pady=10, padx=20)
-        BlackListShowCommandsInBot_s = CTkTextbox(self, width=800, height=80, font=("Arial", 14))
-        BlackListShowCommandsInBot_s.grid(sticky="W", row=9, column=1)
-        BlackListShowCommandsInBot_s.insert(tk.INSERT, str(BlackListShowCommandsInBot).rstrip())
-        ToolTip(BlackListShowCommandsInBotLabel, msg=Localize("BlackListShowCommandsInBotTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(BlackListShowCommandsInBot_s, msg=Localize("BlackListShowCommandsInBotTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
         CTkLabel(self, text=Localize("AdditionalSettings"), text_color=GREEN_COLOR).grid(row=10, column=0, pady=10, padx=20)
 
         CheckWorkURLLabel = CTkLabel(self, text=Localize("CheckWorkURLLabel"), text_color="#ffffff")
@@ -746,7 +735,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
 
         saveButton = customtkinter.CTkButton(self, text=Localize('saveAll'), command= lambda: self.SaveSettings(port_s.get(),
                                                                                                    notify_check_var.get(), traySetting_check_var.get(),
-                                                                                                   variable.get(), BlackListShowCommandsInBot_s.get("1.0", customtkinter.END),
+                                                                                                   variable.get(),
                                                                                                    AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get()))
         saveButton.grid(row=14, column=0, pady=10, padx=20)
         ToolTip(saveButton, msg=Localize("saveButtonTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
@@ -784,10 +773,23 @@ class AppWindow(customtkinter.CTk):
         self.after(0, self.deiconify)
 
     def withdraw_window(self):
+        ctypes.windll['uxtheme.dll'][135](1)
+
         self.withdraw()
+
         image = Image.open(ICON_RAW)
-        menu = item(Localize("show"), self.show_window), (item(Localize("quit"), self.quit_window))
-        icon = pystray.Icon(PROGRAM_NAME, image, PROGRAM_NAME, menu)
+
+        menuItems = ()
+
+        for task in self.allTasksUI:
+            if task["trayCommand_check_var"].get() == "True":
+                menuItems = menuItems + (item(task["nameEntry"].get(), lambda: StartTask(task["urlEntry"].get())),)
+
+        menuItems = menuItems + (Menu.SEPARATOR,)
+        menuItems = menuItems + (item(Localize("show"), self.show_window),)
+        menuItems = menuItems + (item(Localize("quit"), self.quit_window),)
+
+        icon = pystray.Icon(PROGRAM_NAME, image, PROGRAM_NAME, menu=menuItems)
         icon.run()
 
     # endregion
@@ -827,17 +829,15 @@ class AppWindow(customtkinter.CTk):
             settingsFromFile = json.loads(str(file.read()))
             file.close()
 
-            possibleTasksForBot[settingsFromFile["name"]] = fileNames[i]
-
             self.AddTaskUI(str((fileNames[i])[:-4]).replace(SPACE_SYMBOL, " "), content, settingsFromFile, i)
 
     def Save(self):
         filesToDelete = []
 
         for i in range(len(self.allTasksUI)):
-            url = str(self.allTasksUI[i][0].get()).replace(" ", SPACE_SYMBOL)
-            name = str(self.allTasksUI[i][4].get()).replace(" ", SPACE_SYMBOL)
-            script = self.allTasksUI[i][1].get("1.0", customtkinter.END)
+            url = str(self.allTasksUI[i]["urlEntry"].get()).replace(" ", SPACE_SYMBOL)
+            name = str(self.allTasksUI[i]["nameEntry"].get()).replace(" ", SPACE_SYMBOL)
+            script = self.allTasksUI[i]["script"].get("1.0", customtkinter.END)
 
             if url == "" or script == "" or name == "":
                 Notify(Localize("emptyError") + " | №" + str(i + 1))
@@ -849,11 +849,11 @@ class AppWindow(customtkinter.CTk):
 
         for i in range(len(self.allTasksUI)):
             for j in range(len(self.allTasksUI)):
-                if self.allTasksUI[i][0].get() == self.allTasksUI[j][0].get() and i != j:
-                    Notify(Localize("copyError") + " | " + self.allTasksUI[i][0].get() + " | №" + str(i + 1) + ", №" + str(j + 1))
+                if self.allTasksUI[i]["urlEntry"].get() == self.allTasksUI[j]["urlEntry"].get() and i != j:
+                    Notify(Localize("copyError") + " | " + self.allTasksUI[i]["urlEntry"].get() + " | №" + str(i + 1) + ", №" + str(j + 1))
                     return
-                if self.allTasksUI[i][4].get() == self.allTasksUI[j][4].get() and i != j:
-                    Notify(Localize("copyError") + " | " + self.allTasksUI[i][4].get() + " | №" + str(i + 1) + ", №" + str(j + 1))
+                if self.allTasksUI[i]["nameEntry"].get() == self.allTasksUI[j]["nameEntry"].get() and i != j:
+                    Notify(Localize("copyError") + " | " + self.allTasksUI[i]["nameEntry"].get() + " | №" + str(i + 1) + ", №" + str(j + 1))
                     return
 
         for filename in os.listdir(os.getcwd() + "\\Tasks"):
@@ -865,14 +865,14 @@ class AppWindow(customtkinter.CTk):
             os.remove(os.getcwd() + "\\Tasks\\" + file)
 
         for i in self.allTasksUI:
-            url = str(i[0].get()).replace(" ", SPACE_SYMBOL)
-            script = i[1].get("1.0", customtkinter.END)
+            url = str(i["urlEntry"].get()).replace(" ", SPACE_SYMBOL)
+            script = i["script"].get("1.0", customtkinter.END)
             file = open("Tasks\\" + url + '.vbs', 'w', encoding='utf-8')
             file.write(script)
             file.close()
 
             file = open("Tasks\\" + url + '.settings', 'w', encoding='utf-8')
-            file.write('{ "button1": "' + i[2][0].get() + '", "button2": "' + i[2][1].get() + '", "button3": "' + i[2][2].get() + '", "name": "' + i[4].get() + '", "notify": "' + i[5].get() + '" }')
+            file.write('{ "button1": "' + i["buttons"][0].get() + '", "button2": "' + i["buttons"][1].get() + '", "button3": "' + i["buttons"][2].get() + '", "name": "' + i["nameEntry"].get() + '", "notify": "' + i["notify_check_var"].get() + '", "tgBOT": "' + i["tgBOT_check_var"].get() + '", "trayCommand": "' + i["trayCommand_check_var"].get() + '" }')
             file.close()
 
         if self.saveButton._text[-1] == STAR_ICON:
@@ -964,6 +964,28 @@ class AppWindow(customtkinter.CTk):
         ToolTip(notifyLabel, msg=Localize("NotifyCheckboxTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(notifyCheckbox, msg=Localize("NotifyCheckboxTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
+        tgBOTLabel = CTkLabel(leftFrame, text=Localize("ShowInTG_BOT"), font=("Arial", 17), text_color="#ffffff")
+        tgBOTLabel.grid(row=4, column=0, pady=1, padx=5)
+
+        tgBOT_check_var = customtkinter.StringVar(value=str(settingsFromFile["tgBOT"]) if "tgBOT" in settingsFromFile.keys() else "True")
+        tgBOTCheckbox = customtkinter.CTkCheckBox(leftFrame, text="", command=lambda: self.typing(None),
+                                             variable=tgBOT_check_var, onvalue="True", offvalue="False")
+        tgBOTCheckbox.grid(row=4, column=1, pady=1, padx=5)
+
+        ToolTip(tgBOTLabel, msg=Localize("ShowInTG_BOTTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+        ToolTip(tgBOTCheckbox, msg=Localize("ShowInTG_BOTTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+
+        trayCommandLabel = CTkLabel(leftFrame, text=Localize("ShowInTray"), font=("Arial", 17), text_color="#ffffff")
+        trayCommandLabel.grid(row=5, column=0, pady=1, padx=5)
+
+        trayCommand_check_var = customtkinter.StringVar(value=str(settingsFromFile["trayCommand"]) if "trayCommand" in settingsFromFile.keys() else "True")
+        trayCommandCheckbox = customtkinter.CTkCheckBox(leftFrame, text="", command=lambda: self.typing(None),
+                                             variable=trayCommand_check_var, onvalue="True", offvalue="False")
+        trayCommandCheckbox.grid(row=5, column=1, pady=1, padx=5)
+
+        ToolTip(trayCommandLabel, msg=Localize("ShowInTrayTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+        ToolTip(trayCommandCheckbox, msg=Localize("ShowInTrayTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+
         deleteButton = customtkinter.CTkButton(leftFrame,
                                                text=Localize('delete'),
                                                fg_color=RED_COLOR,
@@ -971,8 +993,16 @@ class AppWindow(customtkinter.CTk):
                                                command=lambda: self.DeleteTask(str(urlEntry.get()).replace(" ", SPACE_SYMBOL))
                                                )
 
-        deleteButton.grid(row=4, column=0, pady=35, padx=5)
+        runButton = customtkinter.CTkButton(leftFrame,
+                                               text=Localize('run'),
+                                               command=lambda: StartTask(str(urlEntry.get()).replace(" ", SPACE_SYMBOL))
+                                               )
+
+        deleteButton.grid(row=6, column=0, pady=35, padx=5)
         deleteButton.bind("<MouseWheel>", self._on_mousewheel)
+
+        runButton.grid(row=6, column=1, pady=35, padx=5)
+        runButton.bind("<MouseWheel>", self._on_mousewheel)
 
         leftFrame.grid(row=0, column=0, pady=1, padx=5)
 
@@ -1048,7 +1078,13 @@ WShell.Run("notepad.exe")""")
         frame.pack(side='top', anchor='center', pady=10, ipadx=5)
         frame.bind("<MouseWheel>", self._on_mousewheel)
 
-        self.allTasksUI.append((urlEntry, script, (opt1, opt2, opt3), deleteButton, nameEntry, notify_check_var))
+        possibleTasksForBot[settingsFromFile["name"]] = {"urlEntry": urlEntry, "script": script, "buttons": (opt1, opt2, opt3),
+                                "deleteButton": deleteButton, "nameEntry": nameEntry,
+                                "notify_check_var": notify_check_var, "tgBOT_check_var": tgBOT_check_var, "trayCommand_check_var": trayCommand_check_var}
+
+        self.allTasksUI.append({"urlEntry": urlEntry, "script": script, "buttons": (opt1, opt2, opt3),
+                                "deleteButton": deleteButton, "nameEntry": nameEntry,
+                                "notify_check_var": notify_check_var, "tgBOT_check_var": tgBOT_check_var, "trayCommand_check_var": trayCommand_check_var})
 
     def _on_mousewheel(self, event):
         self.myCanvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
@@ -1194,7 +1230,7 @@ if TG_TOKEN != "":
 
     def RunTaskFromTG(message, chatID):
         if message in possibleTasksForBot.keys():
-            task = possibleTasksForBot[message]
+            task = possibleTasksForBot[message]["urlEntry"].get()
             task = str(task).replace(" ", SPACE_SYMBOL)
             task = str(task).replace(".vbs", "")
             task = str(task).replace("/", "")
@@ -1227,11 +1263,9 @@ if TG_TOKEN != "":
         if str(message).lower() in COMMANDS_TO_START_BOT:
             markup=types.InlineKeyboardMarkup()
 
-            BlackListShowCommandsInBotList = BlackListShowCommandsInBot.split(",") if BlackListShowCommandsInBot != "" else []
-
             for key, value in possibleTasksForBot.items():
                 taskName = key
-                if taskName not in BlackListShowCommandsInBotList:
+                if value["tgBOT_check_var"].get() == "True":
                     markup.add(types.InlineKeyboardButton(taskName, callback_data=str(taskName)))
 
             message = bot.send_message(chat_id, text=Localize("Commands"), reply_markup=markup)
