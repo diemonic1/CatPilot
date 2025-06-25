@@ -1083,9 +1083,7 @@ WShell.Run("notepad.exe")""")
         frame.pack(side='top', anchor='center', pady=10, ipadx=5)
         frame.bind("<MouseWheel>", self._on_mousewheel)
 
-        possibleTasksForBot[settingsFromFile["name"]] = {"urlEntry": urlEntry, "script": script, "buttons": (opt1, opt2, opt3),
-                                "deleteButton": deleteButton, "nameEntry": nameEntry,
-                                "notify_check_var": notify_check_var, "tgBOT_check_var": tgBOT_check_var, "trayCommand_check_var": trayCommand_check_var}
+        possibleTasksForBot[settingsFromFile["name"]] = {"urlEntry": urlEntry.get(), "tgBOT_check_var": tgBOT_check_var.get()}
 
         self.allTasksUI.append({"urlEntry": urlEntry, "script": script, "buttons": (opt1, opt2, opt3),
                                 "deleteButton": deleteButton, "nameEntry": nameEntry,
@@ -1235,7 +1233,7 @@ if TG_TOKEN != "":
 
     def RunTaskFromTG(message, chatID):
         if message in possibleTasksForBot.keys():
-            task = possibleTasksForBot[message]["urlEntry"].get()
+            task = possibleTasksForBot[message]["urlEntry"]
             task = str(task).replace(" ", SPACE_SYMBOL)
             task = str(task).replace(".vbs", "")
             task = str(task).replace("/", "")
@@ -1270,7 +1268,7 @@ if TG_TOKEN != "":
 
             for key, value in possibleTasksForBot.items():
                 taskName = key
-                if value["tgBOT_check_var"].get() == "True":
+                if value["tgBOT_check_var"] == "True":
                     markup.add(types.InlineKeyboardButton(taskName, callback_data=str(taskName)))
 
             message = bot.send_message(chat_id, text=Localize("Commands"), reply_markup=markup)
