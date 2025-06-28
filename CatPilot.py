@@ -149,7 +149,7 @@ def logToFile(message):
     file = open('log.txt', 'r+', encoding='utf-8')
     content = file.read()  # Чтение
     file.seek(0, 0)  # Переход в начало файла
-    file.write(str(message) + " | " + str(datetime.now()) + "\n")
+    file.write(str(datetime.now()) + " | " + str(message) + "\n")
     file.write(content)
     file.close()
 #endregion
@@ -743,17 +743,26 @@ class SettingsWindow(customtkinter.CTkToplevel):
 class LogWindow(customtkinter.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
-        self.geometry('850x500')
+        self.geometry('1200x700')
         self.title(Localize('log'))
         self.after(210, lambda: self.iconbitmap(ICON))
         file = open("log.txt", "r", encoding='utf-8')
         content = file.read()
         file.close()
-        text_area = CTkTextbox(self, width=830, height=480, font=("Helvetika", 15))
 
-        text_area.grid(column=0, pady=10, padx=10)
+        text_area = CTkTextbox(self, font=("Helvetika", 15))
+
+        text_area.pack(fill='both', expand=True, pady=10, padx=10)
 
         text_area.insert(tk.INSERT, content)
+
+        lines = text_area.get("1.0", "end-1c").split("\n")
+        for i in range(len(lines)):
+            if len(lines[i]) > 0:
+                ind = lines[i].index("|")
+                text_area.tag_add("t" + str(i+1), str(i+1) + '.0', str(i+1) + '.' + str(ind+1))
+                text_area.tag_config("t" + str(i+1), foreground=WHITE_GREY_COLOR)
+
         text_area.configure(state='disabled')
 
 class AppWindow(customtkinter.CTk):
@@ -1258,6 +1267,7 @@ if TG_TOKEN != "":
         meesage_id = message.id
 
         if not str(message.from_user.id) in AllowedTG_IDs:
+            logToFile("TG BOT: " + Localize("NotAllowed"))
             bot.send_message(chat_id, text=Localize("NotAllowed"))
             return
 
@@ -1271,6 +1281,7 @@ if TG_TOKEN != "":
                 if value["tgBOT_check_var"] == "True":
                     markup.add(types.InlineKeyboardButton(taskName, callback_data=str(taskName)))
 
+            logToFile("TG BOT: " + Localize("Commands"))
             message = bot.send_message(chat_id, text=Localize("Commands"), reply_markup=markup)
             asyncio.run(delete_message(chat_id, message.id, 30))
 
@@ -1278,6 +1289,7 @@ if TG_TOKEN != "":
             message = message.replace(" ", SPACE_SYMBOL)
             launchWithoutConsole(["cmd", "/c", "OpenBrowserLink.vbs " + message])
             bot.send_message(chat_id, text=Localize("Open"))
+            logToFile("TG BOT: " + Localize("Open") + " | " + message)
             if showNotifications == "True":
                 Notify(Localize("Open") + " | " + message)
         elif ".vbs" in message:
