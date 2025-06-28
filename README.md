@@ -153,10 +153,14 @@ WShell.Run "rundll32.exe powrprof.dll,SetSuspendState Sleep"
 Dim WShell
 Set WShell = CreateObject("WScript.Shell")
 
-WShell.Run Chr(34) & "C:\Program Files (x86)\Steam\steam.exe"
-WShell.Run("S:\Oculus\Support\oculus-client\OculusClient.exe")
+WShell.Run Chr(34) & "C:\Program Files (x86)\Steam\steam.exe" 'open steam
+WShell.Run("S:\Oculus\Support\oculus-client\OculusClient.exe") 'open oculus client
 
 WShell.Run "https://www.google.com/"
+```
+### Пустой скрипт с комментарием
+```
+'comment
 ```
 ### Следующий трек/видео   
 | nexttrack |
