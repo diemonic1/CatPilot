@@ -1247,14 +1247,17 @@ if TG_TOKEN != "":
     def RunTaskFromTG(message, chatID):
         if message in possibleTasksForBot.keys():
             task = possibleTasksForBot[message]["urlEntry"]
-            task = str(task).replace(" ", SPACE_SYMBOL)
-            task = str(task).replace(".vbs", "")
-            task = str(task).replace("/", "")
             result = StartTask(task)
-            bot.answer_callback_query(chatID, text=Localize("CarryOut"))
+            bot.send_message(chatID, text=Localize("CarryOut"))
         else:
+            for key, value in possibleTasksForBot.items():
+                if value["urlEntry"] == message:
+                    result = StartTask(message)
+                    bot.send_message(chatID, text=Localize("CarryOut"))
+                    return
+
             answer = message + " | " + Localize("fail")
-            bot.answer_callback_query(chatID, text=answer)
+            bot.send_message(chatID, text=answer)
 
     async def delete_message(chat_id, message_id, delay):
         time.sleep(delay)
@@ -1296,12 +1299,6 @@ if TG_TOKEN != "":
             logToFile("TG BOT: " + Localize("Open") + " | " + message)
             if showNotifications == "True":
                 Notify(Localize("Open") + " | " + message)
-        elif ".vbs" in message:
-            task = str(message).replace(" ", SPACE_SYMBOL)
-            task = str(task).replace(".vbs", "")
-            task = str(task).replace("/", "")
-            result = StartTask(task)
-            bot.send_message(chat_id, text=Localize("CarryOut"))
         else:
             RunTaskFromTG(message, chat_id)
 
