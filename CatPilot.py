@@ -878,6 +878,8 @@ class AppWindow(customtkinter.CTk):
         for file in filesToDelete:
             os.remove(os.getcwd() + "\\Tasks\\" + file)
 
+        possibleTasksForBot.clear()
+
         for i in self.allTasksUI:
             url = str(i["urlEntry"].get()).replace(" ", SPACE_SYMBOL)
             script = i["script"].get("1.0", customtkinter.END)
@@ -888,6 +890,8 @@ class AppWindow(customtkinter.CTk):
             file = open("Tasks\\" + url + '.settings', 'w', encoding='utf-8')
             file.write('{ "button1": "' + i["buttons"][0].get() + '", "button2": "' + i["buttons"][1].get() + '", "button3": "' + i["buttons"][2].get() + '", "name": "' + i["nameEntry"].get() + '", "notify": "' + i["notify_check_var"].get() + '", "tgBOT": "' + i["tgBOT_check_var"].get() + '", "trayCommand": "' + i["trayCommand_check_var"].get() + '" }')
             file.close()
+
+            possibleTasksForBot[i["nameEntry"].get()] = {"urlEntry": i["urlEntry"].get(), "tgBOT_check_var": i["tgBOT_check_var"].get()}
 
         if self.saveButton._text[-1] == STAR_ICON:
             self.saveButton.configure(fg_color=RED_COLOR, hover_color=RED_HOVER_COLOR, text=Localize("save"))
