@@ -898,7 +898,7 @@ class AppWindow(customtkinter.CTk):
 
         self.saveButton.configure(fg_color=GREEN_COLOR, hover_color=GREEN_HOVER_COLOR)
 
-    def DeleteTask(self, name):
+    def DeleteTask(self, name, frame):
         if name != "":
             result = askyesno(title=Localize("DeleteTaskQ"), message=Localize("DeleteTaskQ"))
             if result:
@@ -924,16 +924,13 @@ class AppWindow(customtkinter.CTk):
             else:
                 return
 
-        for widget in self.frame.winfo_children():
-            widget.destroy()
-
-        self.allTasksUI = []
-        self.ReadSavedTasks()
-        #self.frame.destroy()
-        #self.frame = customtkinter.CTkFrame(self.myCanvas)
-        #self.myCanvas.create_window((0, 0), window=self.frame, anchor="n", tags="self.frame")
-        #self.frame.bind("<Configure>", self.onFrameConfigure)
-        #self.frame.bind("<MouseWheel>", self._on_mousewheel)
+            for widget in self.frame.winfo_children():
+                if widget == frame:
+                    for task in self.allTasksUI:
+                        if task["urlEntry"].get() == name:
+                            self.allTasksUI.remove(task)
+                            break
+                    widget.destroy()
 
     def AddTaskUI(self, taskURL, scriptText, settingsFromFile, number):
         if settingsFromFile == None:
@@ -1008,7 +1005,7 @@ class AppWindow(customtkinter.CTk):
                                                text=Localize('delete'),
                                                fg_color=RED_COLOR,
                                                hover_color=RED_HOVER_COLOR,
-                                               command=lambda: self.DeleteTask(str(urlEntry.get()).replace(" ", SPACE_SYMBOL))
+                                               command=lambda: self.DeleteTask(str(urlEntry.get()).replace(" ", SPACE_SYMBOL), frame)
                                                )
 
         runButton = customtkinter.CTkButton(leftFrame,
