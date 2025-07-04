@@ -256,10 +256,10 @@ Dim WShell
 Set WShell = CreateObject("WScript.Shell")
 
 WShell.Run "taskkill /f /im clo.exe", 0
-WShell.Run "S:\Programs\CatPilot\StartTunnel.cmd", 0
+WShell.Run "S:\Programs\CatPilot\StartTunnel.bat", 0
 ```
 
-> Здесь закрывается процесс clo.exe, после чего запускается .cmd файл, заново запускающий туннель с моим токеном:
+> Здесь закрывается процесс clo.exe, после чего запускается .bat файл, заново запускающий туннель с моим токеном:
 ```
 clo.exe set token 0cWE3Zmrdrmvp6B_QtSzXDTb0sRntiPDE5G_f4vtuAw
 clo.exe publish http 192.168.0.137:5000
