@@ -62,6 +62,7 @@ AllowedTG_IDs = ""
 TG_TOKEN = ""
 CheckWorkURL = ""
 AdditionalURL = ""
+AutoStart = ""
 
 find_settings = False
 
@@ -87,6 +88,7 @@ def UpdateSettings():
     global TG_TOKEN
     global CheckWorkURL
     global AdditionalURL
+    global AutoStart
     PORT = data['PORT']
     showNotifications = data['showNotifications']
     closeToTrayOnStart = data['closeToTrayOnStart']
@@ -95,6 +97,10 @@ def UpdateSettings():
     TG_TOKEN = data['TG_TOKEN']
     CheckWorkURL = data['CheckWorkURL']
     AdditionalURL = data['AdditionalURL']
+    try:
+        AutoStart = data['AutoStart']
+    except Exception:
+        AutoStart = "False"
 
 UpdateSettings()
 
@@ -635,11 +641,16 @@ class ToolTip(tk.Toplevel):
 possibleTasksForBot = {}
 
 class SettingsWindow(customtkinter.CTkToplevel):
-    def SaveSettings(self, port_s, notify_s, tray_s, language, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s):
+    def SaveSettings(self, port_s, notify_s, tray_s, language, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s, AutoStart_s):
         file = open('Settings.json', 'w', encoding='utf-8')
         file.write(
-            '{ "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '"  }')
+            '{ "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '", "AutoStart": "' + str(AutoStart_s).rstrip() + '" }')
         file.close()
+
+        if str(AutoStart_s) == "True":
+            launchWithoutConsole(["cmd", "/c", "LoadOnStartup.vbs"])
+        else:
+            launchWithoutConsole(["cmd", "/c", "NotLoadOnStartup.bat"])
 
         UpdateSettings()
         self.destroy()
@@ -689,20 +700,29 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(traySettingLabel, msg=Localize("traySettingTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(traySetting_checkbox, msg=Localize("traySettingTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=5, column=0, pady=10, padx=20)
+        RunAtStartLabel = CTkLabel(self, text=Localize("RunAtStart"), text_color="#ffffff")
+        RunAtStartLabel.grid(row=5, column=0, pady=10, padx=20)
+        RunAtStart_check_var = customtkinter.StringVar(value=str(AutoStart))
+        RunAtStart_checkbox = customtkinter.CTkCheckBox(self, text="",
+                                             variable=RunAtStart_check_var, onvalue="True", offvalue="False")
+        RunAtStart_checkbox.grid(sticky="W", row=5, column=1)
+        ToolTip(RunAtStartLabel, msg=Localize("AutoStart"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+        ToolTip(RunAtStart_checkbox, msg=Localize("AutoStart"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+
+        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=6, column=0, pady=10, padx=20)
 
         BOTtokenLabel = CTkLabel(self, text='BOT token', text_color="#ffffff")
-        BOTtokenLabel.grid(row=6, column=0, pady=10, padx=20)
+        BOTtokenLabel.grid(row=7, column=0, pady=10, padx=20)
         TG_TOKEN_s = CTkEntry(self, width=400, font=("Arial", 14))
-        TG_TOKEN_s.grid(sticky="W", row=6, column=1)
+        TG_TOKEN_s.grid(sticky="W", row=7, column=1)
         TG_TOKEN_s.insert(0, str(TG_TOKEN))
         ToolTip(BOTtokenLabel, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(TG_TOKEN_s, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
         AllowedTG_IDsLabel = CTkLabel(self, text=Localize("AllowedTG_IDs"), text_color="#ffffff")
-        AllowedTG_IDsLabel.grid(row=7, column=0, pady=10, padx=20)
+        AllowedTG_IDsLabel.grid(row=8, column=0, pady=10, padx=20)
         AllowedTG_IDs_s = CTkEntry(self, width=500, font=("Arial", 14))
-        AllowedTG_IDs_s.grid(sticky="W", row=7, column=1)
+        AllowedTG_IDs_s.grid(sticky="W", row=8, column=1)
         AllowedTG_IDs_s.insert(0, str(AllowedTG_IDs))
         ToolTip(AllowedTG_IDsLabel, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AllowedTG_IDs_s, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
@@ -727,16 +747,14 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(AdditionalURLLabel, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AdditionalURLEntry, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        customtkinter.CTkLabel(self, text=Localize("AutoStart"), wraplength=500,
-                               text_color=GREEN_COLOR, font=("Arial", 14)).grid(row=13, column=1, pady=10, padx=20)
-
         customtkinter.CTkLabel(self, text=Localize("afterSave1") + " " + PROGRAM_NAME + " " + Localize("afterSave2"), text_color=REG_HIGH_COLOR, font=("Arial", 14))\
             .grid(row=13, column=0, pady=10, padx=20)
 
         saveButton = customtkinter.CTkButton(self, text=Localize('saveAll'), command= lambda: self.SaveSettings(port_s.get(),
                                                                                                    notify_check_var.get(), traySetting_check_var.get(),
                                                                                                    variable.get(),
-                                                                                                   AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get()))
+                                                                                                   AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get(),
+                                                                                                   RunAtStart_check_var.get()))
         saveButton.grid(row=14, column=0, pady=10, padx=20)
         ToolTip(saveButton, msg=Localize("saveButtonTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
