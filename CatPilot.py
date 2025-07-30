@@ -63,6 +63,7 @@ TG_TOKEN = ""
 CheckWorkURL = ""
 AdditionalURL = ""
 AutoStart = ""
+NotifyOnStart = ""
 
 find_settings = False
 
@@ -73,7 +74,7 @@ for filename in os.listdir(os.getcwd()):
 
 if find_settings == False:
     file = open('Settings.json', 'a', encoding='utf-8')
-    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "" }')
+    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "", "NotifyOnStart": "True" }')
     file.close()
 
 def UpdateSettings():
@@ -89,6 +90,7 @@ def UpdateSettings():
     global CheckWorkURL
     global AdditionalURL
     global AutoStart
+    global NotifyOnStart
     PORT = data['PORT']
     showNotifications = data['showNotifications']
     closeToTrayOnStart = data['closeToTrayOnStart']
@@ -97,6 +99,10 @@ def UpdateSettings():
     TG_TOKEN = data['TG_TOKEN']
     CheckWorkURL = data['CheckWorkURL']
     AdditionalURL = data['AdditionalURL']
+    try:
+        NotifyOnStart = data['NotifyOnStart']
+    except Exception:
+        NotifyOnStart = "True"
     try:
         AutoStart = data['AutoStart']
     except Exception:
@@ -555,7 +561,6 @@ class ToolTip(tk.Toplevel):
         self.bindigs = self._init_bindings()
 
     def _init_bindings(self) -> list[Binding]:
-        """Initialize the bindings."""
         bindings = [
             Binding(self.widget, "<Enter>", self.on_enter),
             Binding(self.widget, "<Leave>", self.on_leave),
@@ -641,10 +646,15 @@ class ToolTip(tk.Toplevel):
 possibleTasksForBot = {}
 
 class SettingsWindow(customtkinter.CTkToplevel):
-    def SaveSettings(self, port_s, notify_s, tray_s, language, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s, AutoStart_s):
+    def SaveSettings(self, port_s, notify_s, tray_s, language, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s, AutoStart_s, NotifyOnStart_s):
         file = open('Settings.json', 'w', encoding='utf-8')
         file.write(
-            '{ "PORT": ' + str(port_s) + ', "showNotifications": "' + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "' + str(language) + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "' + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "' + str(AdditionalURL_s).rstrip() + '", "AutoStart": "' + str(AutoStart_s).rstrip() + '" }')
+            '{ "PORT": ' + str(port_s) + ', "showNotifications": "'
+            + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "'
+            + str(language) + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "'
+            + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "'
+            + str(AdditionalURL_s).rstrip() + '", "AutoStart": "'
+            + str(AutoStart_s).rstrip() + '", "NotifyOnStart": "' + str(NotifyOnStart_s) + '" }')
         file.close()
 
         if str(AutoStart_s) == "True":
@@ -709,20 +719,29 @@ class SettingsWindow(customtkinter.CTkToplevel):
         ToolTip(RunAtStartLabel, msg=Localize("AutoStart"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(RunAtStart_checkbox, msg=Localize("AutoStart"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
-        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=6, column=0, pady=10, padx=20)
+        NotifyOnStartLabel = CTkLabel(self, text=Localize("NotifyOnStart"), text_color="#ffffff")
+        NotifyOnStartLabel.grid(row=6, column=0, pady=10, padx=20)
+        NotifyOnStart_check_var = customtkinter.StringVar(value=str(NotifyOnStart))
+        NotifyOnStart_checkbox = customtkinter.CTkCheckBox(self, text="",
+                                             variable=NotifyOnStart_check_var, onvalue="True", offvalue="False")
+        NotifyOnStart_checkbox.grid(sticky="W", row=6, column=1)
+        ToolTip(NotifyOnStartLabel, msg=Localize("NotifyOnStartToolTip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+        ToolTip(NotifyOnStart_checkbox, msg=Localize("NotifyOnStartToolTip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+
+        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=7, column=0, pady=10, padx=20)
 
         BOTtokenLabel = CTkLabel(self, text='BOT token', text_color="#ffffff")
-        BOTtokenLabel.grid(row=7, column=0, pady=10, padx=20)
+        BOTtokenLabel.grid(row=8, column=0, pady=10, padx=20)
         TG_TOKEN_s = CTkEntry(self, width=400, font=("Arial", 14))
-        TG_TOKEN_s.grid(sticky="W", row=7, column=1)
+        TG_TOKEN_s.grid(sticky="W", row=8, column=1)
         TG_TOKEN_s.insert(0, str(TG_TOKEN))
         ToolTip(BOTtokenLabel, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(TG_TOKEN_s, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
         AllowedTG_IDsLabel = CTkLabel(self, text=Localize("AllowedTG_IDs"), text_color="#ffffff")
-        AllowedTG_IDsLabel.grid(row=8, column=0, pady=10, padx=20)
+        AllowedTG_IDsLabel.grid(row=9, column=0, pady=10, padx=20)
         AllowedTG_IDs_s = CTkEntry(self, width=500, font=("Arial", 14))
-        AllowedTG_IDs_s.grid(sticky="W", row=8, column=1)
+        AllowedTG_IDs_s.grid(sticky="W", row=9, column=1)
         AllowedTG_IDs_s.insert(0, str(AllowedTG_IDs))
         ToolTip(AllowedTG_IDsLabel, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
         ToolTip(AllowedTG_IDs_s, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
@@ -754,7 +773,7 @@ class SettingsWindow(customtkinter.CTkToplevel):
                                                                                                    notify_check_var.get(), traySetting_check_var.get(),
                                                                                                    variable.get(),
                                                                                                    AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get(),
-                                                                                                   RunAtStart_check_var.get()))
+                                                                                                   RunAtStart_check_var.get(), NotifyOnStart_check_var.get()))
         saveButton.grid(row=14, column=0, pady=10, padx=20)
         ToolTip(saveButton, msg=Localize("saveButtonTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
 
@@ -1345,5 +1364,5 @@ if __name__ == "__main__":
         launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
 
     AppWindow()
-
+    Notify(Localize("NotifyOnStartMessage"))
 

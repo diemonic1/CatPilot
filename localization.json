@@ -57,7 +57,10 @@
         "ShowInTG_BOT": "show in tg bot",
         "ShowInTG_BOTTooltip": "If disabled, it will not be displayed in the Telegram bot when commands are requested",
         "ShowInTray": "show in tray",
-        "ShowInTrayTooltip": "If disabled, it will not appear in the program's tray menu"
+        "ShowInTrayTooltip": "If disabled, it will not appear in the program's tray menu",
+        "NotifyOnStart": "Notify at the start",
+        "NotifyOnStartToolTip": "Immediately after launching the program, it sends a notification that it is ready to work",
+        "NotifyOnStartMessage": "Ready to work"
     },
     "Русский": {
         "success": "(успех)",
@@ -117,6 +120,9 @@
         "ShowInTG_BOT": "тг бот",
         "ShowInTG_BOTTooltip": "Если отключить, не будет показываться в тг боте при запросе команд",
         "ShowInTray": "в трее",
-        "ShowInTrayTooltip": "Если отключить, не будет показываться в меню программы в трее"
+        "ShowInTrayTooltip": "Если отключить, не будет показываться в меню программы в трее",
+        "NotifyOnStart": "Уведомлять на старте",
+        "NotifyOnStartToolTip": "Сразу после запуска программы присылает уведомление, что она готова к работе",
+        "NotifyOnStartMessage": "Готов к работе"
     }
 }
