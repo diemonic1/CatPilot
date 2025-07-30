@@ -74,7 +74,7 @@ for filename in os.listdir(os.getcwd()):
 
 if find_settings == False:
     file = open('Settings.json', 'a', encoding='utf-8')
-    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "", "NotifyOnStart": "True" }')
+    file.write('{ "PORT": 5000, "showNotifications": "True", "closeToTrayOnStart": "False", "language": "English", "AllowedTG_IDs": "", "TG_TOKEN": "", "CheckWorkURL": "", "AdditionalURL": "", "NotifyOnStart": "False" }')
     file.close()
 
 def UpdateSettings():
@@ -102,7 +102,7 @@ def UpdateSettings():
     try:
         NotifyOnStart = data['NotifyOnStart']
     except Exception:
-        NotifyOnStart = "True"
+        NotifyOnStart = "False"
     try:
         AutoStart = data['AutoStart']
     except Exception:
@@ -1363,6 +1363,7 @@ if __name__ == "__main__":
     if CheckWorkURL != "" and os.path.exists("RestartTunnel.vbs"):
         launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
 
-    AppWindow()
-    Notify(Localize("NotifyOnStartMessage"))
+    if NotifyOnStart == "True":
+        Notify(Localize("NotifyOnStartMessage"))
 
+    AppWindow()
