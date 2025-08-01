@@ -2,7 +2,7 @@
 
 ![Static Badge](https://img.shields.io/badge/diemonic1-CatPilot-CatPilot)
 ![GitHub top language](https://img.shields.io/github/languages/top/diemonic1/CatPilot)
-![GitHub](https://img.shields.io/github/license/diemonic1/CatPilot)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 ![GitHub Repo stars](https://img.shields.io/github/stars/diemonic1/CatPilot)
 ![GitHub issues](https://img.shields.io/github/issues/diemonic1/CatPilot)
 
