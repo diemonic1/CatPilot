@@ -31,6 +31,10 @@ This program allows you to control Windows using VBS scripts via a local network
 
 [Program update](#Program-update)
 
+[Developer information: additional localizations](#Developer-information-additional-localizations)
+
+[Developer information: how to build the program](#Developer-information-how-to-build-the-program)
+
 ## Installation
 Download the current build version on [page releases](https://github.com/diemonic1/CatPilot/releases)
 
@@ -284,6 +288,13 @@ If you specify an additional request URL in the CatPilot settings, a GET request
 
 > [!NOTE]
 > If, when replacing files, the system indicates that the VCRUNTIME140.dll or VCRUNTIME140_1.dll files are occupied by another process, simply skip replacing them, they are not necessary.
+
+## Developer information: additional localizations
+The Localization folder stores json files with localized text. You can create a new localization file by specifying the language as the file name and filling in the translation inside (based on the English localization, for example).
+
+Please note that localization keys cannot be changed
+
+## Developer information: how to build the program
 
 # Документация на русском языке
 Это программа позволяет управлять Windows посредством VBS скриптов через локальную сеть или публичный IP (на подобии webhooks), или с помощью телеграмм бота.
