@@ -23,9 +23,9 @@ This program allows you to control Windows using VBS scripts via a local network
 
 [Integration with a telegram bot](#Integration-with-a-telegram-bot)
 
-[Quick-opening-links](#Quick-opening-links)
+[Quick link opening](#Quick-link-opening)
 
-[Control outside the local network (Yandex Alice, IFTTT, etc.)](#Control-outside-the-local-network-(Yandex Alice, IFTTT, etc.))
+[Control outside the local network (Yandex Alice, IFTTT, etc.)](#Control-outside-the-local-network-(Yandex-Alice,-IFTTT,-etc.))
 
 [URL of an additional request](#URL-of-an-additional-request)
 
