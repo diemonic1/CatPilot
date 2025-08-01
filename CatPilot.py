@@ -100,47 +100,48 @@ def UpdateSettings():
     CheckWorkURL = data['CheckWorkURL']
     AdditionalURL = data['AdditionalURL']
     try:
-        NotifyOnStart = data['NotifyOnStart']
-    except Exception:
-        NotifyOnStart = "False"
-    try:
         AutoStart = data['AutoStart']
     except Exception:
         AutoStart = "False"
+    try:
+        NotifyOnStart = data['NotifyOnStart']
+    except Exception:
+        NotifyOnStart = "False"
 
 UpdateSettings()
 
 #endregion
 
 # region Localization
+localizationWasSet = False
 languagesList = ["English"]
-localizationJson = None
+localizationDict = {}
 
 def Localize(key):
-    global localizationJson
+    global localizationWasSet
     global languagesList
+    global localizationDict
     global LANGUAGE
 
-    if localizationJson == None:
-        try:
-            f = open('localization.json', encoding='utf-8')
-            localizationJson = json.load(f)
-            f.close()
+    if not localizationWasSet:
+        languagesList = []
 
-            languagesList = []
-
-            for keyL in localizationJson.keys():
-                languagesList.append(keyL)
-
-        except Exception:
-            Notify('Not find file localization.json')
+        for filename in os.listdir(os.getcwd() + "\\Localization"):
+            fPath = os.path.join(os.getcwd() + "\\Localization", filename)
+            file = open(fPath, "r", encoding='utf-8')
+            languageName = filename[:-5]
+            localization = json.load(file)
+            file.close()
+            languagesList.append(languageName)
+            localizationDict[languageName] = localization
+        localizationWasSet = True
 
     try:
-        return localizationJson[LANGUAGE][key]
+        return localizationDict[LANGUAGE][key]
     except Exception:
         Notify('Not find language "' + LANGUAGE + '" or key "' + key + '" in localization.json, set English language')
         LANGUAGE = "English"
-        return localizationJson[LANGUAGE][key]
+        return localizationDict[LANGUAGE][key]
 
 # endregion
 
