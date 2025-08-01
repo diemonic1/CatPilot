@@ -29,6 +29,8 @@ This program allows you to control Windows using VBS scripts via a local network
 
 [URL of an additional request](#URL-of-an-additional-request)
 
+[Program update](#Program-update)
+
 ## Installation
 Download the current build version on [page releases](https://github.com/diemonic1/CatPilot/releases)
 
@@ -274,6 +276,15 @@ If the script and link are specified, the RestartTunnel.vbs script will be launc
 You may need to track whether CatPilot is currently running or not. To do this, you can request https://example.yourservice.com/Call yourself, or use the additional URL function.
 If you specify an additional request URL in the CatPilot settings, a GET request will be sent to this URL every minute. This way, you can, for example, send a GET request to the server to track whether the program is still running and working (or whether the computer is working in general, if the program is always active while it is on).
 
+### Program update
+1) Download the new version as a zip archive, unzip the CatPilot folder from it
+2) Kill the CatPilot process (via the program itself or via the task manager)
+3) Move all files from the CatPilot folder of the new version to the folder where you have CatPilot installed, confirm the replacement of all files (settings, scripts and log will not be replaced)
+4) Run CatPilot again
+
+> [!NOTE]
+> If, when replacing files, the system indicates that the VCRUNTIME140.dll or VCRUNTIME140_1.dll files are occupied by another process, simply skip replacing them, they are not necessary.
+
 # Документация на русском языке
 Это программа позволяет управлять Windows посредством VBS скриптов через локальную сеть или публичный IP (на подобии webhooks), или с помощью телеграмм бота.
 
@@ -292,6 +303,8 @@ If you specify an additional request URL in the CatPilot settings, a GET request
 [Управление вне локальной сети (Яндекс Алиса, IFTTT и т.д.)](#управление-вне-локальной-сети-яндекс-алиса-ifttt-и-тд)
 
 [URL дополнительного запроса](#URL-дополнительного-запроса)
+
+[Обновление программы](#Обновление-программы)
 
 ## Установка
 Скачайте актуальную версию билда на [странице релизов](https://github.com/diemonic1/CatPilot/releases)
@@ -535,6 +548,15 @@ clo.exe run
 ## URL дополнительного запроса
 Вам может понадобиться отслеживать, работает ли в данный момент CatPilot или нет. Для этого вы можете сами самостоятельно запрашивать https://example.yourservice.com/Call, либо же воспользоваться функцией дополнительного URL.
 Если указать в настройках CatPilot URL дополнительного запроса, каждую минуту на этот URL будет осуществляться GET запрос. Таким образом можно, например, отправлять GET запрос на сервер, чтобы отслеживать, что программа все еще запущена и работает (или же в целом работает компьютер, если программа активна всегда, пока он включен).
+
+### Обновление программы
+1) Скачайте новую версию в виде zip архива, распакуйте из него папку CatPilot 
+2) Убейте процесс CatPilot (через саму программу или через диспетчер задач)
+3) Переместите все файлы из папки CatPilot новой версии в папку, где у вас установлен CatPilot, подтвердите замену всех файлов (настройки, скрипты и лог заменяться не будут)
+4) Запустите CatPilot заново
+   
+> [!NOTE]
+> Если при замене файлов система укажет, что файлы VCRUNTIME140.dll или VCRUNTIME140_1.dll заняты другим процессом, просто пропустите их замену, они не обязательны.
 
 <details>
 <summary>SEO tags</summary>
