@@ -17,7 +17,7 @@ This program allows you to control Windows using VBS scripts via a local network
 
 [How to write scripts](#How-to-write-scripts)
 
-[Keystroke emulation](#Keystroke-emulation)
+[Emulating keystrokes](#Emulating-keystrokes)
 
 [Ready-made script examples](#Ready-made-script-examples)
 
