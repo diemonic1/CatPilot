@@ -1,4 +1,4 @@
-# CatPilot
+ # CatPilot <img src="https://github.com/diemonic1/CatPilot/blob/main/CatPilot.ico?raw=true" width="80" />
 
 ![Static Badge](https://img.shields.io/badge/diemonic1-CatPilot-CatPilot)
 ![GitHub top language](https://img.shields.io/github/languages/top/diemonic1/CatPilot)
