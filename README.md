@@ -11,6 +11,7 @@
 [Документация на русском языке](#Документация-на-русском-языке)
 
 # Documentation on english
+This program allows you to control Windows using VBS scripts via a local network or public IP (similar to webhooks), or using a telegram bot.
 
 # Документация на русском языке
 Это программа позволяет управлять Windows посредством VBS скриптов через локальную сеть или публичный IP (на подобии webhooks), или с помощью телеграмм бота.
