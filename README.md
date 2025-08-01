@@ -25,7 +25,7 @@ This program allows you to control Windows using VBS scripts via a local network
 
 [Quick link opening](#Quick-link-opening)
 
-[Control outside the local network (Yandex Alice, IFTTT, etc.)](#Control-outside-the-local-network-(Yandex-Alice,-IFTTT,-etc.))
+[Control outside the local network (Yandex Alice, IFTTT, etc.)](#control-outside-the-local-network-yandex-alice-ifttt-etc)
 
 [URL of an additional request](#URL-of-an-additional-request)
 
