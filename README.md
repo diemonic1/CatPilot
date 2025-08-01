@@ -13,6 +13,267 @@
 # Documentation on english
 This program allows you to control Windows using VBS scripts via a local network or public IP (similar to webhooks), or using a telegram bot.
 
+[Installation](#Installation)
+
+[How to write scripts](#How-to-write-scripts)
+
+[Keystroke emulation](#Keystroke-emulation)
+
+[Ready-made script examples](#Ready-made-script-examples)
+
+[Integration with a telegram bot](#Integration-with-a-telegram-bot)
+
+[Quick-opening-links](#Quick-opening-links)
+
+[Control outside the local network (Yandex Alice, IFTTT, etc.)](#Control-outside-the-local-network-(Yandex Alice, IFTTT, etc.))
+
+[URL of an additional request](#URL-of-an-additional-request)
+
+## Installation
+Download the current build version on [page releases](https://github.com/diemonic1/CatPilot/releases)
+
+Unzip the CatPilot folder anywhere and run CatPilot.exe
+
+## How to write scripts
+VBS allows you to implement most useful scripts. Here is a common template for a script:
+
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run("")
+```
+
+With WShell.Run("") you can run any commands, including .bat scripts, python scripts or just cmd commands.
+
+> [!TIP]
+> To prevent a python script from showing the console when running, but to run it in the background, simply rename the ScriptName.py script file to ScriptName.pyw, changing the extension
+
+You can use the ' symbol to indicate a comment inside VBS
+
+Comments will be highlighted in color in the editor.
+
+You can use any UTF-8 characters as a script name, including text emoticons 😻.
+
+The script URL can only consist of Latin characters and numbers. The names or URLs of two different scripts cannot be duplicated.
+
+You can launch the script execution by URL.
+
+### Example
+I create a script with URL="RunNotepad" and the name "📄 Run Notepad 📄":
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run("notepad.exe")
+```
+
+> [!TIP]
+> Scripts, names and URLs can be pasted and copied if English input is enabled
+
+The IP address of my computer in the local network is 192.168.0.102, which means I can run the script by creating a GET request (opening it in a browser, for example) to 192.168.0.102:5000/RunNotepad
+After that, my notepad will open.
+
+> [!IMPORTANT]
+> Your router can dynamically assign IP addresses to devices, so - to avoid changing the link you run commands from every time - either disable dynamic allocation in its settings, or assign a specific IP to your device
+
+## Emulating keystrokes
+You can add keys to each script that will be emulated during its execution. For example, by selecting the "f5" key, you can emulate pressing it:
+| f5 |
+|:-----|
+| + |
+| None |
+| + |
+| None |
+
+By specifying several keys, you can call a keyboard shortcut. For example, ctrl+shift+escape will call the task manager (keystrokes will be emulated):
+| ctrl |
+|:-------|
+| + |
+| shift |
+| + |
+| escape |
+
+> [!TIP]
+> If you don't need a script, but only emulation of keys, you can insert only a comment inside the script, for example 'only buttons click
+## Ready-made script examples
+### Run a program with spaces in the path
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run Chr(34) & "C:\Program Files (x86)\Steam\steam.exe"
+```
+### Kill some program (for example FxSound.exe)
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run "taskkill /F /IM FxSound.exe", 0
+```
+### Run a python script
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run("C:\Programs\Test\Check.pyw")
+```
+### Open page in browser
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run "https://www.google.com/"
+```
+### Restart PC
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run "shutdown.exe -r -f -t 00"
+```
+### Shutdown computer
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run "shutdown.exe /s /t 5"
+```
+### Put computer to sleep
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run "rundll32.exe powrprof.dll,SetSuspendState Sleep"
+```
+### Run two programs and open a website
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run Chr(34) & "C:\Program Files (x86)\Steam\steam.exe" 'open steam
+WShell.Run("S:\Oculus\Support\oculus-client\OculusClient.exe") 'open oculus client
+
+WShell.Run "https://www.google.com/"
+```
+### Empty script with a comment
+```
+'comment
+```
+### Next track/video
+| nexttrack |
+|:----------|
+| + |
+| None |
+| + |
+| None |
+
+### Previous track/video
+| prevtrack |
+|:----------|
+| + |
+| None |
+| + |
+| None |
+
+### Increase volume
+| volumeup |
+|:---------|
+| + |
+| None |
+| + |
+| None |
+
+### Decrease volume
+| volumedown |
+|:-----------|
+| + |
+| None |
+| + |
+| None |
+
+### Pause media
+| playpause |
+|:----------|
+| + |
+| None |
+| + |
+| None |
+
+## Integration with a telegram bot
+You can also execute commands using a telegram bot. When sending commands this way, you do not need to be on the same local network as the device.
+First, you need to create your own telegram bot. You can name it whatever you like, for example, 🐾 CatPilot 🐾, and upload a cat as an avatar:
+
+<img src="https://github.com/diemonic1/CatPilot/blob/main/CatPilot.png" width="250" />
+
+After creating the bot, you will receive its token (for example 4839574812:AAFD39kkdpWt3ywyRZergyOLMaJhac60qc)
+
+- Paste this token into the CatPilot settings
+
+The bot will execute commands only from those users whose telegram IDs are specified in the settings in the allowed list.
+You can find out your telegram ID from this bot [@getmyid_bot](https://t.me/getmyid_bot)
+
+The ID must be written with a comma, without spaces: 45435345,12356567
+
+You can get a list of commands in the bot using any of these messages: /start /help /commands /начасть /помощь /команды
+
+> [!TIP]
+> You can run commands from the TG bot by sending it a message with the name or URL of the command (without having to call the list with all the commands).
+
+After a while, the program will delete the message with the list of commands so that you do not accidentally run some command that no longer exists (you can always click on the last message to repeat the execution, including the output of commands).
+
+## Quick link opening
+If you have connected the bot, you can use the quick link opening. If you send the bot a message that contains http, https or .com, it will open the link in a standard browser.
+
+> [!TIP]
+> Using quick link opening, you can, for example, click "share video" in the YouTube mobile app and send the link to it to the bot, and then it will immediately open it on the computer
+
+## Control outside the local network (Yandex Alice, IFTTT, etc.)
+You can execute commands even when you are not on the same local network as the device.
+This may be necessary if you want to control the computer using Yandex Alice, IFTTT or another service that supports webhooks.
+
+If you have a white IP address, you can forward ports (keep in mind that this is not safe).
+
+An alternative would be to use services like ngrok, cloudpub, Tuna or any other similar ones that allow you to create a tunnel.
+
+To integrate with Yandex Alice, you can use the "Domovenok Kuzya" skill.
+
+### Restarting a tunnel in case of an error
+
+If the application you are using to create a tunnel is unstable and sometimes loses connection, you can restart it. To do this, create a script called RestartTunnel.vbs (with this exact name) inside the CatPilot application folder and write the code that restarts your tunnel into it.
+
+In my case the code looks like this:
+```
+Dim WShell
+Set WShell = CreateObject("WScript.Shell")
+
+WShell.Run "taskkill /f /im clo.exe", 0
+WShell.Run "S:\Programs\CatPilot\StartTunnel.bat", 0
+```
+
+> Here the clo.exe process is closed, after which the .bat file is launched, restarting the tunnel with my token:
+```
+clo.exe set token 0cWE3Zmrdrmvp6B_QtSzXDTb0sRntiPDE5G_f4vtuAw
+clo.exe publish http 192.168.0.137:5000
+clo.exe run
+```
+
+In the CatPilot settings, specify the link by which CatPilot can be accessed outside the local network.
+> because I use cloudpub, for me this link looks like https://mydomen.cloudpub.ru/Call
+>
+> you will have your own domain, but /Call should also be present - this is a standard request for the CatPilot application
+
+Your https://example.yourservice.com/Call will be requested every minute, expecting to receive a 200 "Ok" response
+If no response is received, the RestartTunnel.vbs script will be launched
+
+If the script does not exist, or if the link is not specified, this code will not work.
+
+If the script and link are specified, the RestartTunnel.vbs script will be launched when CatPilot starts (this way you can automatically start your tunnel)
+
+## URL of an additional request
+You may need to track whether CatPilot is currently running or not. To do this, you can request https://example.yourservice.com/Call yourself, or use the additional URL function.
+If you specify an additional request URL in the CatPilot settings, a GET request will be sent to this URL every minute. This way, you can, for example, send a GET request to the server to track whether the program is still running and working (or whether the computer is working in general, if the program is always active while it is on).
+
 # Документация на русском языке
 Это программа позволяет управлять Windows посредством VBS скриптов через локальную сеть или публичный IP (на подобии webhooks), или с помощью телеграмм бота.
 
