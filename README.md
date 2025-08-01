@@ -305,7 +305,7 @@ If you want to somehow modify the program, you need to change the python file Ca
 After that:
 1) Open the console as administrator in the folder where CatPilot.py is located
 2) Run the command:
-pyinstaller.exe —onedir —icon=CatPilot.ico —windowed CatPilot.py
+```pyinstaller.exe —onedir —icon=CatPilot.ico —windowed CatPilot.py```
 3) After the build is complete, the CatPilot folder will appear in the dist folder, this is the finished build
 4) Copy all the contents from the ADD folder to the CatPilot folder, which contains the build (these are additional files of libraries, scripts, localizations, etc., necessary for the program to work)
 5) Now the program can be launched as usual using CatPilot.exe
@@ -603,7 +603,7 @@ clo.exe run
 После этого:
 1) Откройте консоль от имени администратора в папке, в которой лежит CatPilot.py
 2) Выполните команду:
-pyinstaller.exe —onedir —icon=CatPilot.ico —windowed CatPilot.py
+```pyinstaller.exe —onedir —icon=CatPilot.ico —windowed CatPilot.py```
 3) После окончания сборки в папке dist появится папка CatPilot, это готовая сборка
 4) Скопируйте из папки ADD все содержимое в папку CatPilot, в которой находится сборка (это дополнительные файлы библиотек, скриптов, локализаций и т.д., нужных для работы программы)
 5) Теперь программу можно как обычно запускать с помощью CatPilot.exe
