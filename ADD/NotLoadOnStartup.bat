@@ -1,0 +1,1 @@
+del "%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\CatPilot.lnk" 2>nul
