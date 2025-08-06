@@ -1236,15 +1236,18 @@ def AppServerHandler():
     global AdditionalURL
 
     while True:
-        result = ""
+        if AdditionalURL == "" and CheckWorkURL == "":
+            return
+
         try:
-            if AdditionalURL == "" and CheckWorkURL == "":
-                return
-
             if AdditionalURL != "":
-                res = get(AdditionalURL, timeout=4)
-                logToFile(Localize("AdditionalURLResponse") + " | " + str(res))
+                response = get(AdditionalURL, timeout=4)
+                response.raise_for_status()
+                logToFile(Localize("AdditionalURLResponse") + " | " + str(response) + " | " + str(response.text))
+        except Exception as e:
+            logToFile("Additional URL error: " + str(e))
 
+        try:
             if CheckWorkURL != "" and os.path.exists("RestartTunnel.vbs"):
                 response = get(CheckWorkURL, timeout=4)
                 response.raise_for_status()
@@ -1259,17 +1262,17 @@ def AppServerHandler():
                     logToFile("RestartTunnel, because exception: " + str(e))
                     launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
                     sleep(10)
-
         except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
-            logToFile("RestartTunnel")
+            logToFile("RestartTunnel, because connection error")
             launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
             sleep(10)
         except requests.exceptions.HTTPError:
-            logToFile("RestartTunnel")
+            logToFile("RestartTunnel, because HTTP Error")
             launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
             sleep(10)
         except Exception as e:
-            logToFile("get error: " + str(e))
+            logToFile("RestartTunnel, because exception: " + str(e))
+            launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
             sleep(10)
 
 #endregion
