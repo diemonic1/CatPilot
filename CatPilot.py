@@ -34,6 +34,7 @@ import sys
 import werkzeug
 
 PROGRAM_NAME = "CatPilot"
+PROGRAM_VERSION = "1.0.0"
 ICON_RAW = "CatPilot.ico"
 ICON = os.getcwd() + "\\" + ICON_RAW
 
@@ -1142,7 +1143,7 @@ WShell.Run("notepad.exe")""")
 
     def __init__(self):
         super().__init__()
-        self.title(PROGRAM_NAME)
+        self.title(PROGRAM_NAME + " | v" + PROGRAM_VERSION)
         self.iconbitmap(default=ICON)
 
         self.configure(fg_color=BACKGROUND_COLOR)
@@ -1245,18 +1246,17 @@ def AppServerHandler():
                 logToFile(Localize("AdditionalURLResponse") + " | " + str(res))
 
             if CheckWorkURL != "" and os.path.exists("RestartTunnel.vbs"):
-                result = get(CheckWorkURL, timeout=4)
-                result.raise_for_status()
-
+                response = get(CheckWorkURL, timeout=4)
+                response.raise_for_status()
                 try:
-                    if not "Ok" in result.text:
-                        logToFile("RestartTunnel")
+                    if not "Ok" in str(response.text):
+                        logToFile("RestartTunnel, because response was: " + str(response.text))
                         launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
                         sleep(10)
                     else:
                         sleep(60)
                 except Exception as e:
-                    logToFile("RestartTunnel")
+                    logToFile("RestartTunnel, because exception: " + str(e))
                     launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
                     sleep(10)
 
