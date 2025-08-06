@@ -1,4 +1,4 @@
- # CatPilot <img src="https://github.com/diemonic1/CatPilot/blob/main/CatPilot.ico?raw=true" width="80" />
+# CatPilot <img src="https://github.com/diemonic1/CatPilot/blob/main/CatPilot.ico?raw=true" width="80" />
 
 ![Static Badge](https://img.shields.io/badge/diemonic1-CatPilot-CatPilot)
 ![GitHub top language](https://img.shields.io/github/languages/top/diemonic1/CatPilot)
@@ -610,5 +610,5 @@ clo.exe run
 
 <details>
 <summary>SEO tags</summary>
-Программа для управления Windows удаленно
+Программа для управления Windows удаленно,автоматизация Windows через скрипты, управление компьютером удалённо, автоматизация компьютера, сценарии для управления ПК, управление компьютером через VBS скрипты, аналоги Laitis, управление компьютером через телеграмм бота,удаленный доступ к компьютеру, Program for remote Windows management, Windows automation via scripts, remote computer management, computer automation, scripts for PC management, computer management via VBS scripts, Laitis analogs, computer management via telegram bot, remote access to computer
 </details>
