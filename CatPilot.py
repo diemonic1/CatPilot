@@ -12,7 +12,9 @@ import psutil
 
 import ctypes
 import difflib
+import queue
 import re
+import traceback
 import pyautogui
 import time
 import telebot
@@ -42,6 +44,17 @@ COMMANDS_TO_START_BOT = "/start /help /commands /начать /помощь /к�
 
 STAR_ICON = "*"
 SPACE_SYMBOL = "%20"
+
+MUTEX_NAME = "CatPilot_SingleInstanceMutex"
+ERROR_ALREADY_EXISTS = 183
+
+WM_QUERYENDSESSION = 0x0011
+WM_ENDSESSION = 0x0016
+
+TRAY_SHOW = "TrayShow"
+TRAY_QUIT = "TrayQuit"
+
+singleInstanceMutex = None
 
 RED_COLOR = "#b31e1e"
 RED_HOVER_COLOR = "#6b1616"
@@ -151,6 +164,10 @@ def logToFile(message):
     if str(message) == "":
         return
 
+    # Многострочные сообщения (трейсбеки) складываем в одну строку:
+    # логгер и окно лога работают построчно
+    message = str(message).replace("\r", "").replace("\n", " | ")
+
     open('log.txt', 'a', encoding='utf-8').close()
 
     file = open("log.txt", "r", encoding='utf-8')
@@ -166,6 +183,24 @@ def logToFile(message):
     file.write(str(datetime.now()) + " | " + str(message) + "\n")
     file.write(content)
     file.close()
+
+def logException(source, excType, excValue, excTraceback):
+    text = "".join(traceback.format_exception(excType, excValue, excTraceback)).strip()
+    logToFile("ERROR (" + str(source) + ") | " + text)
+
+def logUnhandledException(excType, excValue, excTraceback):
+    logException("main", excType, excValue, excTraceback)
+
+def logThreadException(args):
+    if args.exc_type is SystemExit:
+        return
+    logException("thread " + str(args.thread.name if args.thread else "?"),
+                 args.exc_type, args.exc_value, args.exc_traceback)
+
+# В сборке без консоли sys.stderr подменён на заглушку (PyInstaller NullWriter),
+# поэтому единственный способ увидеть падение — писать его в log.txt
+sys.excepthook = logUnhandledException
+threading.excepthook = logThreadException
 #endregion
 
 #region Notify
@@ -174,6 +209,39 @@ async def NotifyAsync(message):
 
 def Notify(message):
     asyncio.run(NotifyAsync(message))
+#endregion
+
+#region Exit
+def AlreadyRunning():
+    global singleInstanceMutex
+
+    try:
+        kernel32 = ctypes.windll.kernel32
+        singleInstanceMutex = kernel32.CreateMutexW(None, False, MUTEX_NAME)
+        return kernel32.GetLastError() == ERROR_ALREADY_EXISTS
+    except Exception as e:
+        logToFile("Single instance check error: " + str(e))
+        return False
+
+def ReleaseSingleInstanceMutex():
+    global singleInstanceMutex
+
+    if singleInstanceMutex:
+        with suppress(Exception):
+            ctypes.windll.kernel32.ReleaseMutex(singleInstanceMutex)
+            ctypes.windll.kernel32.CloseHandle(singleInstanceMutex)
+        singleInstanceMutex = None
+
+def StopBackgroundThreads():
+    if TG_TOKEN != "":
+        with suppress(Exception):
+            bot.stop_polling()
+
+def ExitProgram(code=0):
+    """Завершает процесс, не дожидаясь daemon-потоков (Flask, бот, туннель):
+    их остановка на этапе finalization роняет процесс и оставляет занятым порт"""
+    StopBackgroundThreads()
+    os._exit(code)
 #endregion
 
 #region PressButtons
@@ -666,6 +734,16 @@ class SettingsWindow(customtkinter.CTkToplevel):
 
         UpdateSettings()
         self.destroy()
+
+        # Перезапуск: убираем иконку трея и отпускаем мьютекс, иначе новая копия
+        # решит, что программа уже запущена
+        with suppress(Exception):
+            if self.master.trayIcon is not None:
+                self.master.trayIcon.stop()
+
+        ReleaseSingleInstanceMutex()
+        StopBackgroundThreads()
+
         python = sys.executable
         os.execl(python, python, *sys.argv)
 
@@ -810,20 +888,65 @@ class AppWindow(customtkinter.CTk):
     labelStringNumber = None
     myCanvas = None
     lastNumber = 0
+    trayIcon = None
+    trayQueue = queue.Queue()
 
     # region Tray
+    # Иконка трея живёт в своём потоке (run_detached), поэтому её обработчики
+    # НЕ трогают tkinter напрямую, а кладут команду в очередь: любой вызов Tk
+    # из чужого потока (в том числе self.destroy) ломает главный цикл
     def quit_window(self, icon, item):
-        icon.stop()
-        self.destroy()
+        self.trayQueue.put(TRAY_QUIT)
+        with suppress(Exception):
+            icon.stop()
 
     def show_window(self, icon, item):
-        icon.stop()
-        self.after(0, self.deiconify)
+        self.trayQueue.put(TRAY_SHOW)
+        with suppress(Exception):
+            icon.stop()
+
+    def on_end_session(self, wparam, lparam):
+        """Windows завершает сеанс. Окно pystray на необработанные сообщения
+        отвечает 0, что для WM_QUERYENDSESSION означает запрет выключения,
+        поэтому подтверждаем выход и закрываемся сами"""
+        if wparam:
+            logToFile("Windows session is ending, closing " + PROGRAM_NAME)
+            ExitProgram()
+        return 0
+
+    def process_tray_queue(self):
+        with suppress(queue.Empty):
+            while True:
+                command = self.trayQueue.get_nowait()
+
+                if command == TRAY_QUIT:
+                    self.QuitProgram()
+                elif command == TRAY_SHOW:
+                    self.trayIcon = None
+                    self.deiconify()
+
+        self.after(100, self.process_tray_queue)
 
     def start_task_from_tray(self, url):
         return lambda: StartTask(url)
 
+    def QuitProgram(self):
+        logToFile("Closing " + PROGRAM_NAME)
+
+        if self.trayIcon is not None:
+            with suppress(Exception):
+                self.trayIcon.stop()
+            self.trayIcon = None
+
+        with suppress(Exception):
+            self.destroy()
+
+        ExitProgram()
+
     def withdraw_window(self):
+        if self.trayIcon is not None:
+            return
+
         ctypes.windll['uxtheme.dll'][135](1)
 
         self.withdraw()
@@ -843,9 +966,20 @@ class AppWindow(customtkinter.CTk):
         menuItems = menuItems + (item(Localize("quit"), self.quit_window),)
 
         icon = pystray.Icon(PROGRAM_NAME, image, PROGRAM_NAME, menu=menuItems)
-        icon.run()
+        icon._message_handlers[WM_QUERYENDSESSION] = lambda wparam, lparam: 1
+        icon._message_handlers[WM_ENDSESSION] = self.on_end_session
+
+        self.trayIcon = icon
+
+        # run_detached, а не run: run() блокируется до закрытия иконки, из-за чего
+        # главный цикл tkinter либо не запускался, либо продолжался на уже
+        # уничтоженном окне ("Failed to execute script CatPilot")
+        icon.run_detached()
 
     # endregion
+
+    def report_callback_exception(self, excType, excValue, excTraceback):
+        logException("Tkinter callback", excType, excValue, excTraceback)
 
     def open_SettingsWindow(self):
         window = SettingsWindow(self)
@@ -1156,7 +1290,7 @@ WShell.Run("notepad.exe")""")
         self.saveButton = CTkButton(frame, text=Localize("save"), fg_color=GREEN_COLOR, hover_color=GREEN_HOVER_COLOR, command=self.Save)
         self.saveButton.grid(row=0, column=3, pady=10, padx=5)
         CTkButton(frame, text=Localize("hidetotray"), command=self.withdraw_window).grid(row=0, column=4, pady=10, padx=25)
-        CTkButton(frame, text=Localize("kill") + ' ' + PROGRAM_NAME, command=self.destroy, fg_color=RED_COLOR, hover_color=RED_HOVER_COLOR).grid(row=0, column=5, pady=10, padx=30)
+        CTkButton(frame, text=Localize("kill") + ' ' + PROGRAM_NAME, command=self.QuitProgram, fg_color=RED_COLOR, hover_color=RED_HOVER_COLOR).grid(row=0, column=5, pady=10, padx=30)
         frame.pack()
 
         #region SetWindow
@@ -1208,6 +1342,8 @@ WShell.Run("notepad.exe")""")
 
         logToFile(Localize("runOn") + " " + str(PORT))
 
+        self.process_tray_queue()
+
         self.mainloop()
 #endregion
 
@@ -1226,7 +1362,13 @@ def FlaskMain(page):
     return result, 200
 
 def flask_main():
-    app.run(host="0.0.0.0",port=PORT)
+    try:
+        app.run(host="0.0.0.0",port=PORT)
+    except Exception as e:
+        # Чаще всего порт занят другой (например, не до конца закрытой) копией
+        logToFile("Flask server error (port " + str(PORT) + ") | " + str(e))
+        with suppress(Exception):
+            Notify("Flask server error (port " + str(PORT) + "): " + str(e))
 #endregion
 
 #region AppServerHandler
@@ -1352,6 +1494,12 @@ def BotHandler():
 #endregion
 
 if __name__ == "__main__":
+    if AlreadyRunning():
+        logToFile(PROGRAM_NAME + " is already running, second copy closed")
+        with suppress(Exception):
+            Notify(PROGRAM_NAME + " is already running")
+        ExitProgram()
+
     flaskThread = threading.Thread(target=flask_main)
     flaskThread.daemon = True
     flaskThread.start()
@@ -1368,6 +1516,15 @@ if __name__ == "__main__":
         launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
 
     if NotifyOnStart == "True":
-        Notify(Localize("NotifyOnStartMessage"))
+        with suppress(Exception):
+            Notify(Localize("NotifyOnStartMessage"))
 
-    AppWindow()
+    try:
+        AppWindow()
+    except Exception:
+        logException("main", *sys.exc_info())
+        with suppress(Exception):
+            Notify(PROGRAM_NAME + " crashed, see log.txt")
+        ExitProgram(1)
+
+    ExitProgram()
