@@ -6,26 +6,16 @@ import os
 import sys
 import traceback
 from contextlib import suppress
-from datetime import datetime
 
 import webview
 
-PROGRAM_NAME = "CatPilot"
+from catpilot_config import ICON, PROGRAM_NAME
+from catpilot_log import LogToFile
 
 DWMWA_USE_IMMERSIVE_DARK_MODE = 20
 MB_YESNO = 0x04
 MB_ICONWARNING = 0x30
 IDYES = 6
-
-def LogToFile(message):
-    # Тот же формат, что у logToFile в CatPilot.py: новые строки сверху
-    with suppress(Exception):
-        open('log.txt', 'a', encoding='utf-8').close()
-        with open('log.txt', 'r+', encoding='utf-8') as file:
-            content = file.read()
-            file.seek(0, 0)
-            file.write(str(datetime.now()) + " | " + str(message).replace("\r", "").replace("\n", " | ") + "\n")
-            file.write(content)
 
 class Api:
     """Методы, доступные странице как window.pywebview.api.*
@@ -90,10 +80,8 @@ def RunGui():
         window.events.shown += lambda: OnShown(window)
         window.events.closing += lambda: OnClosing(window, api)
 
-        icon = os.path.abspath("CatPilot.ico")
-
         webview.start(gui="edgechromium",
-                      icon=icon if os.path.isfile(icon) else None,
+                      icon=ICON if os.path.isfile(ICON) else None,
                       private_mode=False,
                       storage_path=os.path.join(os.getenv("LOCALAPPDATA", os.getcwd()), PROGRAM_NAME, "WebView2"))
     except Exception:
