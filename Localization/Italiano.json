@@ -60,5 +60,22 @@
     "RunAtStart": "Esegui all'avvio del sistema",
     "NotifyOnStart": "Notifica all'avvio",
     "NotifyOnStartToolTip": "Subito dopo l'avvio del programma, invia una notifica che è pronto per l'uso",
-    "NotifyOnStartMessage": "Pronto per l'uso"
+    "NotifyOnStartMessage": "Pronto per l'uso",
+    "search": "Cerca",
+    "noTasks": "Ancora nessuna attività",
+    "selectTask": "Seleziona un'attività a sinistra o creane una nuova",
+    "saved": "Salvato",
+    "cancel": "Annulla",
+    "close": "Chiudi",
+    "refresh": "Aggiorna",
+    "unsavedCloseQ": "Ci sono modifiche non salvate. Chiudere la finestra senza salvare?",
+    "unsavedSettingsQ": "Le modifiche non salvate alle attività andranno perse dopo il riavvio. Continuare?",
+    "runSavedVersion": "L'attività ha modifiche non salvate: viene eseguita la versione salvata",
+    "notSavedYet": "Salva prima l'attività",
+    "connectionLost": "Nessuna connessione con CatPilot",
+    "restarting": "Riavvio...",
+    "tagNotifyTooltip": "Mostra una notifica all'esecuzione dello script",
+    "tagTrayTooltip": "Mostrato nel menu della barra delle applicazioni",
+    "tagTgTooltip": "Mostrato nell'elenco dei comandi del bot Telegram",
+    "tagKeysTooltip": "Preme dei tasti dopo l'esecuzione dello script"
 }

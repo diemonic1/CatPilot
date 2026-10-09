@@ -1,20 +1,21 @@
-from time import sleep
+import sys
 
-import customtkinter
-from customtkinter import *
-import tkinter as tk
-from tkinter.messagebox import askyesno
+# Окно — отдельный процесс (CatPilot.exe --gui), который запускает основная копия.
+# Ветка стоит до остальных импортов: окну не нужны ни бот, ни pyautogui, ни Flask
+if __name__ == "__main__" and "--gui" in sys.argv:
+    from catpilot_gui import RunGui
+    RunGui()
+    sys.exit(0)
+
+from time import sleep
 from contextlib import suppress
-from enum import Enum, auto
-from typing import Any, Callable
-from tkinter.scrolledtext import ScrolledText
-import psutil
 
 import ctypes
-import difflib
-import queue
 import re
+import secrets
 import traceback
+import unicodedata
+import winreg
 import pyautogui
 import time
 import telebot
@@ -22,21 +23,27 @@ from telebot import types
 from requests import get
 import requests.exceptions
 import threading
-from flask import Flask
+from flask import Flask, Response, abort, jsonify, request
+from werkzeug.serving import make_server
 from datetime import datetime
 from pystray import MenuItem as item, Menu
 import pystray
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw, ImageFont
 import subprocess
 import os
 from win11toast import toast
 import asyncio
 import json
-import sys
-import werkzeug
+
+# В сборке --windowed PyInstaller оставляет sys.stdout/sys.stderr = None,
+# а print/логгеры библиотек ожидают файл
+if sys.stdout is None:
+    sys.stdout = open(os.devnull, "w")
+if sys.stderr is None:
+    sys.stderr = open(os.devnull, "w")
 
 PROGRAM_NAME = "CatPilot"
-PROGRAM_VERSION = "1.0.0"
+PROGRAM_VERSION = "2.0.0"
 ICON_RAW = "CatPilot.ico"
 ICON = os.getcwd() + "\\" + ICON_RAW
 
@@ -51,20 +58,19 @@ ERROR_ALREADY_EXISTS = 183
 WM_QUERYENDSESSION = 0x0011
 WM_ENDSESSION = 0x0016
 
-TRAY_SHOW = "TrayShow"
-TRAY_QUIT = "TrayQuit"
+SHOW_EVENT_NAME = "CatPilot_ShowWindowEvent"
+EVENT_MODIFY_STATE = 0x0002
+INFINITE = 0xFFFFFFFF
+ASFW_ANY = -1
+SW_RESTORE = 9
+
+GUI_ARG = "--gui"
+SHOW_ARG = "--show"
+RESTART_ARG = "--restart"
+GUI_PORT_ENV = "CATPILOT_UI_PORT"
+GUI_TOKEN_ENV = "CATPILOT_UI_TOKEN"
 
 singleInstanceMutex = None
-
-RED_COLOR = "#b31e1e"
-RED_HOVER_COLOR = "#6b1616"
-REG_HIGH_COLOR = "#ff4d4d"
-WHITE_GREY_COLOR = "#8f8f8f"
-
-GREEN_COLOR = "#22ba20"
-GREEN_HOVER_COLOR = "#177515"
-BACKGROUND_COLOR = "#242424"
-FOREGROUND_COLOR = "#2b2b2b"
 
 #region Settings
 
@@ -218,7 +224,14 @@ def AlreadyRunning():
     try:
         kernel32 = ctypes.windll.kernel32
         singleInstanceMutex = kernel32.CreateMutexW(None, False, MUTEX_NAME)
-        return kernel32.GetLastError() == ERROR_ALREADY_EXISTS
+        if kernel32.GetLastError() != ERROR_ALREADY_EXISTS:
+            return False
+
+        # Свой хэндл на чужой мьютекс не держим: иначе он переживёт ту копию,
+        # и ожидание при перезапуске никогда не закончится
+        kernel32.CloseHandle(singleInstanceMutex)
+        singleInstanceMutex = None
+        return True
     except Exception as e:
         logToFile("Single instance check error: " + str(e))
         return False
@@ -337,1014 +350,594 @@ def StartTask(taskURL):
     return message
 #endregion
 
-#region get_windows_scaling
+#region Tasks
+# Задача на диске — пара файлов Tasks\<url>.vbs (скрипт) и Tasks\<url>.settings (json)
+TASKS_DIR = "Tasks"
+TASK_FLAGS = ("notify", "tgBOT", "trayCommand")
 
-def get_windows_scaling():
-    try:
-        # Для Windows 8.1 и выше
-        ctypes.windll.shcore.SetProcessDpiAwareness(1)
-        scale_factor = ctypes.windll.shcore.GetScaleFactorForDevice(0) / 100
-    except:
-        # Для более старых версий Windows
-        try:
-            hdc = ctypes.windll.user32.GetDC(0)
-            LOGPIXELSX = 88
-            scale_factor = ctypes.windll.gdi32.GetDeviceCaps(hdc, LOGPIXELSX) / 96
-            ctypes.windll.user32.ReleaseDC(0, hdc)
-        except:
-            scale_factor = 1.0
-    return scale_factor
-
-#endregion
-
-#region MultiColumnDropdown
-
-class MultiColumnDropdown(customtkinter.CTkToplevel):
-    def __init__(self, master, selected_option, options, columns, select_callback, width=100, height=200):
-        super().__init__(master)
-        self.selected_option = selected_option
-        self.select_callback = select_callback
-        self.columns = columns
-
-        # Настройки окна
-        self.overrideredirect(True)  # Убираем рамки окна
-        self.attributes("-topmost", True)  # Поверх всех окон
-        self.geometry(f"{width}x{height}")
-
-        # Создаем скроллируемый фрейм
-        self.scroll_frame = customtkinter.CTkScrollableFrame(self, width=width - 20, height=height - 20)
-        self.scroll_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
-        # Создаем кнопки опций
-        self.create_options(options)
-
-        # Привязываем события для закрытия при клике вне окна
-        self.bind("<FocusOut>", lambda e: self.destroy())
-
-    def create_options(self, options):
-        """Создает кнопки опций в несколько столбцов"""
-        for i, option in enumerate(options):
-            row = i // self.columns
-            col = i % self.columns
-
-            btn = customtkinter.CTkButton(
-                self.scroll_frame,
-                text=option,
-                bg_color=FOREGROUND_COLOR,
-                width=100,
-                fg_color= GREEN_COLOR if option == self.selected_option.get() else BACKGROUND_COLOR,
-                command=lambda opt=option: self.select_option(opt)
-            )
-            btn.grid(row=row, column=col, padx=2, pady=2, sticky="ew")
-
-        # Настраиваем равномерное распределение столбцов
-        for col in range(self.columns):
-            self.scroll_frame.grid_columnconfigure(col, weight=1)
-
-    def select_option(self, option):
-        """Выбирает опцию и закрывает окно"""
-        self.select_callback(option)
-        self.destroy()
-
-class MultiColumnOptionMenu(customtkinter.CTkFrame):
-    def __init__(self, master, options, _on_mousewheel, default_option, columns=5, command=None, **kwargs):
-        super().__init__(master, **kwargs)
-        self.command = command
-        self.selected_option = customtkinter.StringVar(value=default_option)
-        self.options = options
-        self.columns = columns
-
-        # Основная кнопка для отображения выбранного значения
-        self.main_button = customtkinter.CTkButton(
-            self,
-            textvariable=self.selected_option,
-            command=self.show_dropdown,
-            width=100,
-            bg_color=FOREGROUND_COLOR,
-            fg_color=("#3B8ED0", "#1F6AA5"),
-            hover_color=("#36719F", "#144870")
-        )
-        self.main_button.configure(fg_color=(("#3B8ED0", "#1F6AA5")) if self.selected_option.get() != "None" else ((BACKGROUND_COLOR, BACKGROUND_COLOR)))
-        self.main_button.pack()
-        self.main_button.bind("<MouseWheel>", _on_mousewheel)
-
-        # Текущее выпадающее окно
-        self.dropdown_window = None
-
-    def show_dropdown(self):
-        """Показывает выпадающее окно"""
-        if self.dropdown_window and self.dropdown_window.winfo_exists():
-            self.dropdown_window.destroy()
-            return
-
-        # Позиционируем окно под кнопкой
-        x = self.winfo_rootx() - 420
-        y = self.winfo_rooty() + self.main_button.winfo_height()
-
-        self.dropdown_window = MultiColumnDropdown(
-            master=self.winfo_toplevel(),
-            options=self.options,
-            columns=self.columns,
-            selected_option=self.selected_option,
-            select_callback=self.select_option,
-            width=520,
-            height=400
-        )
-        self.dropdown_window.geometry(f"+{x}+{y}")
-        self.dropdown_window.focus_set()
-
-    def select_option(self, option):
-        """Выбирает опцию и обновляет основную кнопку"""
-        self.selected_option.set(option)
-        self.main_button.configure(fg_color=(("#3B8ED0", "#1F6AA5")) if self.selected_option.get() != "None" else ((BACKGROUND_COLOR, BACKGROUND_COLOR)))
-        if self.command:
-            self.command(option)
-
-    def get(self):
-        return self.selected_option.get()
-
-#endregion
-
-#region SimpleLineNumberedTextbox
-
-class SimpleLineNumberedTextbox(customtkinter.CTkFrame):
-    onHover = False
-
-    def __init__(self, master, parent, **kwargs):
-        super().__init__(master, **kwargs)
-
-        self.line_number = customtkinter.CTkTextbox(self, width=25, text_color=WHITE_GREY_COLOR, fg_color="#1d1e1e",
-                                                    wrap="none", corner_radius=0, pady=7, border_spacing=0,
-                                                    activate_scrollbars=False, font=("Helvetika", 17), height=210)
-
-        self.textbox = customtkinter.CTkTextbox(self, wrap="none", corner_radius=0, pady=7, border_spacing=0, fg_color="#1d1e1e",
-                                                width=960, height=210, font=("Helvetika", 17), text_color="#ffffff")
-
-        self.line_number.pack(side="left", fill="both", expand=True)
-        self.textbox.pack(side="left", fill="both", expand=True)
-
-        self.textbox.bind("<Enter>", lambda e: self.on_enter(e))
-        self.textbox.bind("<Leave>", lambda e: self.on_leave(e))
-        self.line_number.bind("<Enter>", lambda e: self.on_enter(e))
-        self.line_number.bind("<Leave>", lambda e: self.on_leave(e))
-
-        self.line_number.bind("<MouseWheel>", lambda e: "break")
-
-        self.textbox.bind("<KeyRelease>", self._update_line_numbers)
-        self.textbox.bind("<KeyRelease>", self._update_comments)
-        self.textbox.bind("<KeyRelease>", parent.typing)
-
-        self.line_number.bind("<B1-Motion>", lambda e: "break")
-        self.line_number.bind("<ButtonPress-1>", lambda e: "break")  # Нажатие левой кнопки
-        self.line_number.bind("<Shift-Button-1>", lambda e: "break")  # Выделение с Shift
-        self.line_number.bind("<Control-Button-1>", lambda e: "break")  # Выделение с Ctrl
-
-        current_scrollcmd = self.textbox._textbox.cget("yscrollcommand")
-
-        # Проверяем тип и сохраняем оригинальную команду
-        if callable(current_scrollcmd ):
-            self._original_scrollcmd = current_scrollcmd
-        elif isinstance(current_scrollcmd , str):
-            # Для строковых команд создаем обертку через tcl
-            self._original_scrollcmd = lambda *args: self.textbox._textbox.tk.call(current_scrollcmd, *args)
-        else:
-            self._original_scrollcmd = None
-
-        # Устанавливаем нашу прокси-функцию
-        self.textbox.configure(yscrollcommand=self.yscroll)
-
-        self._update_line_numbers()
-
-    def _update_line_numbers(self, withScroll=None, event=None):
-        linesCount = len(self.textbox.get("1.0", "end-1c").split("\n"))
-        self.line_number.configure(state="normal")
-        self.line_number.delete("1.0", "end")
-        self.line_number.insert("1.0", "\n".join(str(i) for i in range(1, linesCount + 1)))
-        self.line_number.tag_config("right", justify="right")
-        self.line_number.tag_add("right", "1.0", "end")
-        self.line_number.configure(state="disabled")
-        first, last = self.textbox.yview()
-        self.line_number.yview_moveto(first)
-
-    def _update_comments(self, event=None):
-        lines = self.textbox.get("1.0", "end-1c").split("\n")
-        for i in range(len(lines)):
-            if len(lines[i]) > 0 and "'" in lines[i]:
-                ind = lines[i].index("'")
-                self.textbox.tag_add("t" + str(i+1), str(i+1) + '.' + str(ind), str(i+1) + '.end lineend')
-                self.textbox.tag_config("t" + str(i+1), foreground=GREEN_COLOR)
-
-    def insert(self, text):
-        self.textbox.insert(tk.INSERT, text)
-
-    def yscroll(self, *args):
-        first, last = self.textbox.yview()
-        self.line_number.yview_moveto(first)
-        self._original_scrollcmd(*args)
-
-    def on_enter(self, event):
-        # Запускаем функцию при наведении
-        global hover_job
-        hover_job = self.after(1, self.repeat_while_hovering)  # 100ms задержка
-
-    def on_leave(self, event):
-        # Останавливаем функцию при уходе курсора
-        global hover_job
-        if hover_job:
-            self.after_cancel(hover_job)
-            hover_job = None
-
-    def repeat_while_hovering(self):
-        global hover_job
-        first, last = self.textbox.yview()
-        self.line_number.yview_moveto(first)
-        # Планируем следующий вызов
-        hover_job = self.after(1, self.repeat_while_hovering)
-
-    def get(self, arg1, arg2):
-        return self.textbox.get(arg1, arg2)
-
-#endregion
-
-#region Tooltip
-
-class ToolTipStatus(Enum):
-    OUTSIDE = auto()
-    INSIDE = auto()
-    VISIBLE = auto()
-
-class Binding:
-    def __init__(self, widget: tk.Widget, binding_name: str, functor: Callable) -> None:
-        self._widget = widget
-        self._name: str = binding_name
-        self._id: str = self._widget.bind(binding_name, functor, add="+")
-
-    def unbind(self) -> None:
-        self._widget.unbind(self._name, self._id)
-
-class ToolTip(tk.Toplevel):
-    DEFAULT_PARENT_KWARGS = {"bg": "black", "padx": 1, "pady": 1}
-    DEFAULT_MESSAGE_KWARGS = {"aspect": 1000}
-    S_TO_MS = 1000
-
-    def __init__(
-        self,
-        widget: tk.Widget,
-        msg: str,
-        delay: float = 0.0,
-        follow: bool = True,
-        refresh: float = 1.0,
-        x_offset: int = +10,
-        y_offset: int = +10,
-        parent_kwargs: dict or None = None,
-        **message_kwargs: Any,
-    ):
-        self.widget = widget
-        # ToolTip should have the same parent as the widget unless stated
-        # otherwise in the `parent_kwargs`
-        tk.Toplevel.__init__(self, **(parent_kwargs or self.DEFAULT_PARENT_KWARGS))
-        self.withdraw()  # Hide initially in case there is a delay
-        # Disable ToolTip's title bar
-        self.overrideredirect(True)
-
-        # StringVar instance for msg string|function
-        self.msg_var = tk.StringVar()
-        self.msg = msg
-        self._update_message()
-        self.delay = delay
-        self.follow = follow
-        self.refresh = refresh
-        self.x_offset = x_offset
-        self.y_offset = y_offset
-        # visibility status of the ToolTip inside|outside|visible
-        self.status = ToolTipStatus.OUTSIDE
-        self.last_moved = 0.0
-        # use Message widget to host ToolTip
-        self.message_kwargs: dict = self.DEFAULT_MESSAGE_KWARGS.copy()
-        self.message_kwargs.update(message_kwargs)
-        self.message_widget = tk.Message(
-            self,
-            textvariable=self.msg_var,
-            **self.message_kwargs,
-        )
-        self.message_widget.grid()
-        self.bindigs = self._init_bindings()
-
-    def _init_bindings(self) -> list[Binding]:
-        bindings = [
-            Binding(self.widget, "<Enter>", self.on_enter),
-            Binding(self.widget, "<Leave>", self.on_leave),
-            Binding(self.widget, "<ButtonPress>", self.on_leave),
-        ]
-        if self.follow:
-            bindings.append(
-                Binding(self.widget, "<Motion>", self._update_tooltip_coords)
-            )
-        return bindings
-
-    def destroy(self) -> None:
-        """Destroy the ToolTip and unbind all the bindings."""
-        with suppress(tk.TclError):
-            for b in self.bindigs:
-                b.unbind()
-            self.bindigs.clear()
-            super().destroy()
-
-    def on_enter(self, event: tk.Event) -> None:
-        """
-        Processes motion within the widget including entering and moving.
-        """
-        self.last_moved = time.perf_counter()
-        self.status = ToolTipStatus.INSIDE
-        self._update_tooltip_coords(event)
-        self.after(int(self.delay * self.S_TO_MS), self._show)
-
-    def on_leave(self, event: tk.Event or None = None) -> None:
-        """
-        Hides the ToolTip.
-        """
-        self.status = ToolTipStatus.OUTSIDE
-        self.withdraw()
-
-    def _update_tooltip_coords(self, event: tk.Event) -> None:
-        """
-        Updates the ToolTip's position.
-        """
-        self.geometry(f"+{event.x_root + self.x_offset}+{event.y_root + self.y_offset}")
-
-    def _update_message(self) -> None:
-        """Update the message displayed in the tooltip."""
-        if callable(self.msg):
-            msg = self.msg()
-            if isinstance(msg, list):
-                msg = "\n".join(msg)
-        elif isinstance(self.msg, str):
-            msg = self.msg
-        elif isinstance(self.msg, list):
-            msg = "\n".join(self.msg)
-        else:
-            raise TypeError(
-                f"ToolTip `msg` must be a string, list of strings, or a "
-                f"callable returning them, not {type(self.msg)}."
-            )
-        self.msg_var.set(msg)
-
-    def _show(self) -> None:
-        """
-        Displays the ToolTip.
-
-        Recursively queues `_show` in the scheduler every `self.refresh` seconds
-        """
-        if (
-            self.status == ToolTipStatus.INSIDE
-            and time.perf_counter() - self.last_moved >= self.delay
-        ):
-            self.status = ToolTipStatus.VISIBLE
-
-        if self.status == ToolTipStatus.VISIBLE:
-            self._update_message()
-            self.deiconify()
-
-            # Recursively call _show to update ToolTip with the newest value of msg
-            # This is a race condition which only exits when upon a binding change
-            # that in turn changes the `status` to outside
-            self.after(int(self.refresh * self.S_TO_MS), self._show)
-
-#endregion
-
-#region Window
 possibleTasksForBot = {}
+tasksLock = threading.Lock()
 
-class SettingsWindow(customtkinter.CTkToplevel):
-    def SaveSettings(self, port_s, notify_s, tray_s, language, AllowedTG_IDs_s, TG_TOKEN_s, CheckWorkURL_s, AdditionalURL_s, AutoStart_s, NotifyOnStart_s):
-        file = open('Settings.json', 'w', encoding='utf-8')
-        file.write(
-            '{ "PORT": ' + str(port_s) + ', "showNotifications": "'
-            + str(notify_s) + '", "closeToTrayOnStart": "' + str(tray_s) + '", "language": "'
-            + str(language) + '", "AllowedTG_IDs": "' + str(AllowedTG_IDs_s).rstrip() + '", "TG_TOKEN": "'
-            + str(TG_TOKEN_s).rstrip() + '", "CheckWorkURL": "' + str(CheckWorkURL_s).rstrip() + '", "AdditionalURL": "'
-            + str(AdditionalURL_s).rstrip() + '", "AutoStart": "'
-            + str(AutoStart_s).rstrip() + '", "NotifyOnStart": "' + str(NotifyOnStart_s) + '" }')
-        file.close()
+def TasksFolder():
+    folder = os.path.join(os.getcwd(), TASKS_DIR)
+    os.makedirs(folder, exist_ok=True)
+    return folder
 
-        if str(AutoStart_s) == "True":
-            launchWithoutConsole(["cmd", "/c", "LoadOnStartup.vbs"])
-        else:
-            launchWithoutConsole(["cmd", "/c", "NotLoadOnStartup.bat"])
+def LoadTasks():
+    folder = TasksFolder()
+    tasks = []
 
-        UpdateSettings()
-        self.destroy()
+    for filename in sorted(os.listdir(folder)):
+        if not filename.endswith(".vbs"):
+            continue
 
-        # Перезапуск: убираем иконку трея и отпускаем мьютекс, иначе новая копия
-        # решит, что программа уже запущена
+        url = filename[:-4]
+
+        with open(os.path.join(folder, filename), "r", encoding='utf-8') as file:
+            script = file.read().rstrip()
+
+        settingsFromFile = {}
         with suppress(Exception):
-            if self.master.trayIcon is not None:
-                self.master.trayIcon.stop()
+            with open(os.path.join(folder, url + ".settings"), "r", encoding='utf-8') as file:
+                settingsFromFile = json.load(file)
 
-        ReleaseSingleInstanceMutex()
-        StopBackgroundThreads()
+        task = {"url": url, "script": script, "name": str(settingsFromFile.get("name", url))}
 
-        python = sys.executable
-        os.execl(python, python, *sys.argv)
+        for key in ("button1", "button2", "button3"):
+            task[key] = str(settingsFromFile.get(key, "None"))
 
-    def __init__(self, parent):
-        global languagesList
-        super().__init__(parent)
-        self.geometry('1270x790')
-        self.title(Localize("settings"))
-        self.after(210, lambda: self.iconbitmap(ICON))
+        for key in TASK_FLAGS:
+            task[key] = str(settingsFromFile.get(key, "True"))
 
-        variable = customtkinter.StringVar(self)
-        variable.set(str(LANGUAGE))
+        tasks.append(task)
 
-        CTkLabel(self, text=Localize("GeneralSettings"), text_color=GREEN_COLOR).grid(row=0, column=0, pady=10, padx=20)
+    return tasks
 
-        CTkLabel(self, text=Localize("language"), text_color="#ffffff").grid(row=1, column=0, pady=10, padx=20)
-        opt = customtkinter.CTkOptionMenu(self, values=languagesList, variable=variable)
-        opt.configure(width=15, font=("Arial", 12))
-        opt.grid(sticky="W", row=1, column=1)
+def ValidateTasks(tasks):
+    """Возвращает (текст ошибки, индекс задачи) или None"""
+    for i, task in enumerate(tasks):
+        if task["url"] == "" or task["name"] == "" or task["script"].strip() == "":
+            return Localize("emptyError"), i
 
-        portlabel = CTkLabel(self, text='PORT', text_color="#ffffff")
-        portlabel.grid(row=2, column=0, pady=10, padx=20)
-        port_s = CTkEntry(self, width=150, font=("Arial", 14))
-        port_s.grid(sticky="W", row=2, column=1)
-        port_s.insert(0, str(PORT))
-        ToolTip(portlabel, msg=Localize("portTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(port_s, msg=Localize("portTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+        if not re.match("^[a-zA-Z0-9]+$", task["url"]):
+            return Localize("notAllowedURLError"), i
 
-        notifyLabel = CTkLabel(self, text=Localize("notify"), text_color="#ffffff")
-        notifyLabel.grid(row=3, column=0, pady=10, padx=20)
-        notify_check_var = customtkinter.StringVar(value=str(showNotifications))
-        notify_checkbox = customtkinter.CTkCheckBox(self, text="",
-                                             variable=notify_check_var, onvalue="True", offvalue="False")
-        notify_checkbox.grid(sticky="W", row=3, column=1)
-        ToolTip(notifyLabel, msg=Localize("notifyTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(notify_checkbox, msg=Localize("notifyTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+    for i in range(len(tasks)):
+        for j in range(i + 1, len(tasks)):
+            for key in ("url", "name"):
+                if tasks[i][key] == tasks[j][key]:
+                    return Localize("copyError") + " | " + tasks[i][key] + " | №" + str(i + 1) + ", №" + str(j + 1), j
 
-        traySettingLabel = CTkLabel(self, text=Localize("traySetting"), text_color="#ffffff")
-        traySettingLabel.grid(row=4, column=0, pady=10, padx=20)
-        traySetting_check_var = customtkinter.StringVar(value=str(closeToTrayOnStart))
-        traySetting_checkbox = customtkinter.CTkCheckBox(self, text="",
-                                             variable=traySetting_check_var, onvalue="True", offvalue="False")
-        traySetting_checkbox.grid(sticky="W", row=4, column=1)
-        ToolTip(traySettingLabel, msg=Localize("traySettingTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(traySetting_checkbox, msg=Localize("traySettingTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+    return None
 
-        RunAtStartLabel = CTkLabel(self, text=Localize("RunAtStart"), text_color="#ffffff")
-        RunAtStartLabel.grid(row=5, column=0, pady=10, padx=20)
-        RunAtStart_check_var = customtkinter.StringVar(value=str(AutoStart))
-        RunAtStart_checkbox = customtkinter.CTkCheckBox(self, text="",
-                                             variable=RunAtStart_check_var, onvalue="True", offvalue="False")
-        RunAtStart_checkbox.grid(sticky="W", row=5, column=1)
-        ToolTip(RunAtStartLabel, msg=Localize("AutoStart"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(RunAtStart_checkbox, msg=Localize("AutoStart"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+def NormalizeTask(raw):
+    task = {"url": str(raw.get("url", "")).strip(),
+            "name": str(raw.get("name", "")).strip(),
+            "script": str(raw.get("script", "")).replace("\r\n", "\n")}
 
-        NotifyOnStartLabel = CTkLabel(self, text=Localize("NotifyOnStart"), text_color="#ffffff")
-        NotifyOnStartLabel.grid(row=6, column=0, pady=10, padx=20)
-        NotifyOnStart_check_var = customtkinter.StringVar(value=str(NotifyOnStart))
-        NotifyOnStart_checkbox = customtkinter.CTkCheckBox(self, text="",
-                                             variable=NotifyOnStart_check_var, onvalue="True", offvalue="False")
-        NotifyOnStart_checkbox.grid(sticky="W", row=6, column=1)
-        ToolTip(NotifyOnStartLabel, msg=Localize("NotifyOnStartToolTip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(NotifyOnStart_checkbox, msg=Localize("NotifyOnStartToolTip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+    for key in ("button1", "button2", "button3"):
+        value = str(raw.get(key, "None"))
+        task[key] = value if value in buttons else "None"
 
-        CTkLabel(self, text=Localize("SettingsBot"), text_color=GREEN_COLOR).grid(row=7, column=0, pady=10, padx=20)
+    for key in TASK_FLAGS:
+        task[key] = "True" if str(raw.get(key, "True")) == "True" else "False"
 
-        BOTtokenLabel = CTkLabel(self, text='BOT token', text_color="#ffffff")
-        BOTtokenLabel.grid(row=8, column=0, pady=10, padx=20)
-        TG_TOKEN_s = CTkEntry(self, width=400, font=("Arial", 14))
-        TG_TOKEN_s.grid(sticky="W", row=8, column=1)
-        TG_TOKEN_s.insert(0, str(TG_TOKEN))
-        ToolTip(BOTtokenLabel, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(TG_TOKEN_s, msg=Localize("BOTtokenTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+    return task
 
-        AllowedTG_IDsLabel = CTkLabel(self, text=Localize("AllowedTG_IDs"), text_color="#ffffff")
-        AllowedTG_IDsLabel.grid(row=9, column=0, pady=10, padx=20)
-        AllowedTG_IDs_s = CTkEntry(self, width=500, font=("Arial", 14))
-        AllowedTG_IDs_s.grid(sticky="W", row=9, column=1)
-        AllowedTG_IDs_s.insert(0, str(AllowedTG_IDs))
-        ToolTip(AllowedTG_IDsLabel, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(AllowedTG_IDs_s, msg=Localize("AllowedTG_IDsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+def SaveTasks(rawTasks):
+    tasks = [NormalizeTask(raw) for raw in rawTasks]
 
-        CTkLabel(self, text=Localize("AdditionalSettings"), text_color=GREEN_COLOR).grid(row=10, column=0, pady=10, padx=20)
+    error = ValidateTasks(tasks)
+    if error is not None:
+        return error
 
-        CheckWorkURLLabel = CTkLabel(self, text=Localize("CheckWorkURLLabel"), text_color="#ffffff")
-        CheckWorkURLLabel.grid(row=11, column=0, pady=10, padx=20)
-        CheckWorkURLEntry = CTkEntry(self, width=400, font=("Arial", 14))
-        CheckWorkURLEntry.grid(sticky="W", row=11, column=1)
-        CheckWorkURLEntry.insert(0, str(CheckWorkURL))
+    with tasksLock:
+        folder = TasksFolder()
 
-        ToolTip(CheckWorkURLLabel, msg=Localize("CheckWorkURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(CheckWorkURLEntry, msg=Localize("CheckWorkURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+        for filename in os.listdir(folder):
+            if filename.endswith(".vbs") or filename.endswith(".settings"):
+                os.remove(os.path.join(folder, filename))
 
-        AdditionalURLLabel = CTkLabel(self, text=Localize("AdditionalURLLabel"), text_color="#ffffff")
-        AdditionalURLLabel.grid(row=12, column=0, pady=10, padx=20)
-        AdditionalURLEntry = CTkEntry(self, width=400, font=("Arial", 14))
-        AdditionalURLEntry.grid(sticky="W", row=12, column=1)
-        AdditionalURLEntry.insert(0, str(AdditionalURL))
+        for task in tasks:
+            with open(os.path.join(folder, task["url"] + ".vbs"), "w", encoding='utf-8') as file:
+                file.write(task["script"].rstrip() + "\n")
 
-        ToolTip(AdditionalURLLabel, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(AdditionalURLEntry, msg=Localize("AdditionalURLTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+            settingsForFile = {key: task[key] for key in ("button1", "button2", "button3", "name") + TASK_FLAGS}
+            with open(os.path.join(folder, task["url"] + ".settings"), "w", encoding='utf-8') as file:
+                json.dump(settingsForFile, file, ensure_ascii=False)
 
-        customtkinter.CTkLabel(self, text=Localize("afterSave1") + " " + PROGRAM_NAME + " " + Localize("afterSave2"), text_color=REG_HIGH_COLOR, font=("Arial", 14))\
-            .grid(row=13, column=0, pady=10, padx=20)
+    ReloadTasks()
+    return None
 
-        saveButton = customtkinter.CTkButton(self, text=Localize('saveAll'), command= lambda: self.SaveSettings(port_s.get(),
-                                                                                                   notify_check_var.get(), traySetting_check_var.get(),
-                                                                                                   variable.get(),
-                                                                                                   AllowedTG_IDs_s.get(), TG_TOKEN_s.get(), CheckWorkURLEntry.get(), AdditionalURLEntry.get(),
-                                                                                                   RunAtStart_check_var.get(), NotifyOnStart_check_var.get()))
-        saveButton.grid(row=14, column=0, pady=10, padx=20)
-        ToolTip(saveButton, msg=Localize("saveButtonTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
+def DeleteTaskFiles(url):
+    with tasksLock:
+        for extension in (".vbs", ".settings"):
+            path = os.path.join(TasksFolder(), url + extension)
+            if os.path.isfile(path):
+                os.remove(path)
 
-class LogWindow(customtkinter.CTkToplevel):
-    def __init__(self, parent):
-        super().__init__(parent)
-        self.geometry('1200x700')
-        self.title(Localize('log'))
-        self.after(210, lambda: self.iconbitmap(ICON))
-        file = open("log.txt", "r", encoding='utf-8')
-        content = file.read()
-        file.close()
+    ReloadTasks()
 
-        text_area = CTkTextbox(self, font=("Helvetika", 15))
+def ReloadTasks():
+    """Перечитывает задачи с диска и обновляет всё, что от них зависит: список бота и меню трея"""
+    tasks = LoadTasks()
 
-        text_area.pack(fill='both', expand=True, pady=10, padx=10)
+    possibleTasksForBot.clear()
+    for task in tasks:
+        possibleTasksForBot[task["name"]] = {"urlEntry": task["url"], "tgBOT_check_var": task["tgBOT"]}
 
-        text_area.insert(tk.INSERT, content)
-
-        lines = text_area.get("1.0", "end-1c").split("\n")
-        for i in range(len(lines)):
-            if len(lines[i]) > 0:
-                ind = lines[i].index("|")
-                text_area.tag_add("t" + str(i+1), str(i+1) + '.0', str(i+1) + '.' + str(ind+1))
-                text_area.tag_config("t" + str(i+1), foreground=WHITE_GREY_COLOR)
-
-        text_area.configure(state='disabled')
-
-class AppWindow(customtkinter.CTk):
-    allTasksUI = []
-    saveButton = None
-    labelStringNumber = None
-    myCanvas = None
-    lastNumber = 0
-    trayIcon = None
-    trayQueue = queue.Queue()
-
-    # region Tray
-    # Иконка трея живёт в своём потоке (run_detached), поэтому её обработчики
-    # НЕ трогают tkinter напрямую, а кладут команду в очередь: любой вызов Tk
-    # из чужого потока (в том числе self.destroy) ломает главный цикл
-    def quit_window(self, icon, item):
-        self.trayQueue.put(TRAY_QUIT)
+    if trayIcon is not None:
         with suppress(Exception):
-            icon.stop()
+            trayIcon.menu = BuildTrayMenu(tasks)
 
-    def show_window(self, icon, item):
-        self.trayQueue.put(TRAY_SHOW)
+    return tasks
+#endregion
+
+#region Tray icons
+# Меню трея — классическое Win32-меню, его текст рисует GDI: цветные эмодзи он не умеет,
+# а символов, которых нет в Segoe UI и его запасных шрифтах (🥽, ᯅ, ⛶), не показывает вовсе.
+# Поэтому значок из названия задачи рисуем картинкой и ставим слева от пункта
+MIIM_BITMAP = 0x00000080
+SM_CXSMICON = 49
+
+# Первый шрифт, в котором есть символ, и рисует значок. Segoe UI Emoji — цветной,
+# остальные монохромные (рисуются цветом текста меню). SansSerifCollection есть только в Windows 11
+ICON_FONTS = ["seguiemj.ttf", "seguisym.ttf", "SansSerifCollection.ttf", "seguihis.ttf"]
+ICON_RENDER_SIZE = 96
+ICON_JOINERS = "\u200d\ufe0e\ufe0f\u20e3"  # ZWJ, селекторы вида, keycap
+
+trayBitmaps = {}
+iconFonts = None
+
+def IsIconChar(ch):
+    if ch in ICON_JOINERS:
+        return True
+    if ch.isascii():
+        return False
+
+    category = unicodedata.category(ch)
+    if category.startswith("S"):
+        return True
+    if category.startswith("L"):
+        # Буква редкой письменности как значок (ᯅ), но не обычный текст
+        return not unicodedata.name(ch, "").startswith(("LATIN", "CYRILLIC", "GREEK"))
+    return False
+
+def SplitTrayIcon(name):
+    """Возвращает (значок или None, текст без значка). Значок — первая подряд идущая
+    последовательность символов-значков в названии; все её вхождения убираются из текста"""
+    match = None
+    for found in re.finditer("[^\\s]+", name):
+        run = ""
+        for ch in found.group():
+            if IsIconChar(ch):
+                run += ch
+            elif run:
+                break
+        letters = [ch for ch in run if unicodedata.category(ch).startswith("L")]
+        # Несколько букв подряд — уже слово, а не значок
+        if run.strip(ICON_JOINERS) and len(letters) <= 1 and (not letters or len(run.strip(ICON_JOINERS)) == 1):
+            match = run
+            break
+
+    if match is None:
+        return None, name
+
+    text = " ".join(name.replace(match, " ").split())
+    return match, text if text else name
+
+def LoadIconFonts():
+    fonts = []
+    fontsFolder = os.path.join(os.environ.get("WINDIR", "C:\\Windows"), "Fonts")
+
+    for fileName in ICON_FONTS:
         with suppress(Exception):
-            icon.stop()
+            font = ImageFont.truetype(os.path.join(fontsFolder, fileName), ICON_RENDER_SIZE * 2 // 3)
+            # Как выглядит отсутствующий символ (.notdef) — чтобы отличать «нет символа» от значка
+            fonts.append((font, RenderIconGlyph(font, "\U000F0000", (0, 0, 0, 255)).tobytes()))
 
-    def on_end_session(self, wparam, lparam):
-        """Windows завершает сеанс. Окно pystray на необработанные сообщения
-        отвечает 0, что для WM_QUERYENDSESSION означает запрет выключения,
-        поэтому подтверждаем выход и закрываемся сами"""
-        if wparam:
-            logToFile("Windows session is ending, closing " + PROGRAM_NAME)
-            ExitProgram()
-        return 0
+    return fonts
 
-    def process_tray_queue(self):
-        with suppress(queue.Empty):
-            while True:
-                command = self.trayQueue.get_nowait()
+def RenderIconGlyph(font, icon, color):
+    image = Image.new("RGBA", (ICON_RENDER_SIZE * 2, ICON_RENDER_SIZE * 2), (0, 0, 0, 0))
+    ImageDraw.Draw(image).text((ICON_RENDER_SIZE // 2, ICON_RENDER_SIZE // 2), icon, font=font, fill=color, embedded_color=True)
+    return image
 
-                if command == TRAY_QUIT:
-                    self.QuitProgram()
-                elif command == TRAY_SHOW:
-                    self.trayIcon = None
-                    self.deiconify()
+def MenuTextColor():
+    # Меню трея следует теме приложений Windows (см. SetPreferredAppMode в RunTray)
+    with suppress(Exception):
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize") as key:
+            if winreg.QueryValueEx(key, "AppsUseLightTheme")[0] == 0:
+                return (240, 240, 240, 255)
+    return (0, 0, 0, 255)
 
-        self.after(100, self.process_tray_queue)
+def RenderIconImage(icon, size):
+    global iconFonts
 
-    def start_task_from_tray(self, url):
-        return lambda: StartTask(url)
+    if iconFonts is None:
+        iconFonts = LoadIconFonts()
 
-    def QuitProgram(self):
-        logToFile("Closing " + PROGRAM_NAME)
+    for font, missingGlyph in iconFonts:
+        image = RenderIconGlyph(font, icon, MenuTextColor())
+        box = image.getbbox()
 
-        if self.trayIcon is not None:
-            with suppress(Exception):
-                self.trayIcon.stop()
-            self.trayIcon = None
+        if box is None or RenderIconGlyph(font, icon, (0, 0, 0, 255)).tobytes() == missingGlyph:
+            continue
 
+        # Обрезаем по содержимому и вписываем в квадрат: у символов разная ширина и отступы
+        image = image.crop(box)
+        scale = size / max(image.size)
+        image = image.resize((max(1, round(image.width * scale)), max(1, round(image.height * scale))), Image.LANCZOS)
+
+        square = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        square.paste(image, ((size - image.width) // 2, (size - image.height) // 2))
+        return square
+
+    return None
+
+def CreateMenuBitmap(image):
+    """32-битный DIB с premultiplied alpha — так Windows рисует картинку пункта меню с прозрачностью"""
+    class BITMAPINFOHEADER(ctypes.Structure):
+        _fields_ = [("biSize", ctypes.c_uint32), ("biWidth", ctypes.c_int32), ("biHeight", ctypes.c_int32),
+                    ("biPlanes", ctypes.c_uint16), ("biBitCount", ctypes.c_uint16), ("biCompression", ctypes.c_uint32),
+                    ("biSizeImage", ctypes.c_uint32), ("biXPelsPerMeter", ctypes.c_int32), ("biYPelsPerMeter", ctypes.c_int32),
+                    ("biClrUsed", ctypes.c_uint32), ("biClrImportant", ctypes.c_uint32)]
+
+    header = BITMAPINFOHEADER(ctypes.sizeof(BITMAPINFOHEADER), image.width, -image.height, 1, 32, 0, 0, 0, 0, 0, 0)
+
+    red, green, blue, alpha = image.split()
+    pixels = Image.merge("RGBA", (ImageChops.multiply(blue, alpha), ImageChops.multiply(green, alpha),
+                                  ImageChops.multiply(red, alpha), alpha)).tobytes()
+
+    gdi32 = ctypes.windll.gdi32
+    gdi32.CreateDIBSection.restype = ctypes.c_void_p
+    gdi32.CreateDIBSection.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_uint, ctypes.POINTER(ctypes.c_void_p), ctypes.c_void_p, ctypes.c_uint32]
+
+    bits = ctypes.c_void_p()
+    bitmap = gdi32.CreateDIBSection(None, ctypes.byref(header), 0, ctypes.byref(bits), None, 0)
+    if not bitmap or not bits.value:
+        return None
+
+    ctypes.memmove(bits, pixels, len(pixels))
+    return bitmap
+
+def TrayItemTextAndBitmap(name):
+    """Текст пункта меню и картинка значка из названия задачи. Если значка нет или его
+    нечем нарисовать — пункт остаётся как есть: исходное название без картинки"""
+    icon, text = SplitTrayIcon(name)
+    if icon is None:
+        return name, None
+
+    if icon not in trayBitmaps:
+        bitmap = None
         with suppress(Exception):
-            self.destroy()
+            image = RenderIconImage(icon, ctypes.windll.user32.GetSystemMetrics(SM_CXSMICON) or 16)
+            if image is not None:
+                bitmap = CreateMenuBitmap(image)
+        # Картинки живут до конца работы программы: меню пересоздаётся, а значков немного
+        trayBitmaps[icon] = bitmap
 
+    if trayBitmaps[icon] is None:
+        return name, None
+
+    return text, trayBitmaps[icon]
+#endregion
+
+#region Tray
+# Пока программа в трее, кроме pystray (чистый Win32) никакого интерфейса нет:
+# окно — отдельный процесс, который создаётся только по «Показать»
+trayIcon = None
+
+class TrayIcon(pystray.Icon):
+    """pystray.Icon, у пунктов меню которого может быть картинка слева (MenuItem.iconBitmap)"""
+
+    def _create_menu_item(self, descriptor, callbacks):
+        menuItem = super()._create_menu_item(descriptor, callbacks)
+
+        bitmap = getattr(descriptor, "iconBitmap", None)
+        if bitmap:
+            menuItem.fMask |= MIIM_BITMAP
+            menuItem.hbmpItem = bitmap
+
+        return menuItem
+
+def StartTaskInBackground(url):
+    # Задача ждёт завершения vbs, а меню трея не должно подвисать
+    threading.Thread(target=StartTask, args=(url,), daemon=True).start()
+
+def BuildTrayMenu(tasks):
+    menuItems = []
+
+    for task in tasks:
+        if task["trayCommand"] == "True":
+            text, bitmap = TrayItemTextAndBitmap(task["name"])
+            menuItem = item(text, (lambda url: lambda: StartTaskInBackground(url))(task["url"]))
+            menuItem.iconBitmap = bitmap
+            menuItems.append(menuItem)
+
+    menuItems.append(Menu.SEPARATOR)
+    menuItems.append(item(Localize("show"), lambda: ShowWindow(), default=True))
+    menuItems.append(item(Localize("quit"), lambda: QuitProgram()))
+
+    return Menu(*menuItems)
+
+def OnEndSession(wparam, lparam):
+    """Windows завершает сеанс. Окно pystray на необработанные сообщения
+    отвечает 0, что для WM_QUERYENDSESSION означает запрет выключения,
+    поэтому подтверждаем выход и закрываемся сами"""
+    if wparam:
+        logToFile("Windows session is ending, closing " + PROGRAM_NAME)
+        CloseWindow()
         ExitProgram()
+    return 0
 
-    def withdraw_window(self):
-        if self.trayIcon is not None:
-            return
+def HideTray():
+    if trayIcon is not None:
+        # visible = False сразу удаляет иконку (NIM_DELETE), иначе после os._exit
+        # в трее остаётся «призрак» до наведения мыши
+        with suppress(Exception):
+            trayIcon.visible = False
 
+def RunTray():
+    global trayIcon
+
+    # Тёмное контекстное меню трея
+    with suppress(Exception):
         ctypes.windll['uxtheme.dll'][135](1)
 
-        self.withdraw()
-
-        image = Image.open(ICON_RAW)
-
-        menuItems = ()
-
-        for task in self.allTasksUI:
-            if task["trayCommand_check_var"].get() == "True":
-                name = task["nameEntry"].get()
-                url = task["urlEntry"].get()
-                menuItems = menuItems + (item(name, self.start_task_from_tray(url)),)
-
-        menuItems = menuItems + (Menu.SEPARATOR,)
-        menuItems = menuItems + (item(Localize("show"), self.show_window),)
-        menuItems = menuItems + (item(Localize("quit"), self.quit_window),)
-
-        icon = pystray.Icon(PROGRAM_NAME, image, PROGRAM_NAME, menu=menuItems)
-        icon._message_handlers[WM_QUERYENDSESSION] = lambda wparam, lparam: 1
-        icon._message_handlers[WM_ENDSESSION] = self.on_end_session
-
-        self.trayIcon = icon
-
-        # run_detached, а не run: run() блокируется до закрытия иконки, из-за чего
-        # главный цикл tkinter либо не запускался, либо продолжался на уже
-        # уничтоженном окне ("Failed to execute script CatPilot")
-        icon.run_detached()
-
-    # endregion
-
-    def report_callback_exception(self, excType, excValue, excTraceback):
-        logException("Tkinter callback", excType, excValue, excTraceback)
-
-    def open_SettingsWindow(self):
-        window = SettingsWindow(self)
-        window.grab_set()
-
-    def open_LogWindow(self):
-        window = LogWindow(self)
-        window.grab_set()
-
-    def typing(self, args):
-        if self.saveButton._text[-1] != STAR_ICON:
-            self.saveButton.configure(fg_color=RED_COLOR, hover_color=RED_HOVER_COLOR, text=self.saveButton._text + " " + STAR_ICON)
-
-    def onFrameConfigure(self, event):
-        self.myCanvas.configure(scrollregion=self.myCanvas.bbox("all"))
-
-    def ReadSavedTasks(self):
-        fileNames = []
-        setiingsFiles = {}
-
-        for filename in os.listdir(os.getcwd() + "\\Tasks"):
-            f = os.path.join(os.getcwd() + "\\Tasks", filename)
-            if os.path.isfile(f) and ".vbs" in filename:
-                fileNames.append(filename)
-            elif os.path.isfile(f) and ".settings" in filename:
-                setiingsFiles[str(filename)[:-9] + ".vbs"] = filename
-
-        for i in range(len(fileNames)):
-            file = open(os.getcwd() + "\\Tasks\\" + fileNames[i], "r", encoding='utf-8')
-            content = file.read()
-            file.close()
-
-            file = open(os.getcwd() + "\\Tasks\\" + setiingsFiles[fileNames[i]], "r", encoding='utf-8')
-            settingsFromFile = json.loads(str(file.read()))
-            file.close()
-
-            self.AddTaskUI(str((fileNames[i])[:-4]).replace(SPACE_SYMBOL, " "), content, settingsFromFile, i)
-
-    def Save(self):
-        filesToDelete = []
-
-        for i in range(len(self.allTasksUI)):
-            url = str(self.allTasksUI[i]["urlEntry"].get()).replace(" ", SPACE_SYMBOL)
-            name = str(self.allTasksUI[i]["nameEntry"].get()).replace(" ", SPACE_SYMBOL)
-            script = self.allTasksUI[i]["script"].get("1.0", customtkinter.END)
-
-            if url == "" or script == "" or name == "":
-                Notify(Localize("emptyError") + " | №" + str(i + 1))
-                return
-
-            if not re.match("^[a-zA-Z0-9]+$", url):
-                Notify(Localize("notAllowedURLError") + " | №" + str(i + 1))
-                return
-
-        for i in range(len(self.allTasksUI)):
-            for j in range(len(self.allTasksUI)):
-                if self.allTasksUI[i]["urlEntry"].get() == self.allTasksUI[j]["urlEntry"].get() and i != j:
-                    Notify(Localize("copyError") + " | " + self.allTasksUI[i]["urlEntry"].get() + " | №" + str(i + 1) + ", №" + str(j + 1))
-                    return
-                if self.allTasksUI[i]["nameEntry"].get() == self.allTasksUI[j]["nameEntry"].get() and i != j:
-                    Notify(Localize("copyError") + " | " + self.allTasksUI[i]["nameEntry"].get() + " | №" + str(i + 1) + ", №" + str(j + 1))
-                    return
-
-        for filename in os.listdir(os.getcwd() + "\\Tasks"):
-                f = os.path.join(os.getcwd() + "\\Tasks", filename)
-                if (os.path.isfile(f) and ".vbs" in filename) or (os.path.isfile(f) and ".settings" in filename):
-                    filesToDelete.append(filename)
-
-        for file in filesToDelete:
-            os.remove(os.getcwd() + "\\Tasks\\" + file)
-
-        possibleTasksForBot.clear()
-
-        for i in self.allTasksUI:
-            url = str(i["urlEntry"].get()).replace(" ", SPACE_SYMBOL)
-            script = i["script"].get("1.0", customtkinter.END)
-            file = open("Tasks\\" + url + '.vbs', 'w', encoding='utf-8')
-            file.write(script)
-            file.close()
-
-            file = open("Tasks\\" + url + '.settings', 'w', encoding='utf-8')
-            file.write('{ "button1": "' + i["buttons"][0].get() + '", "button2": "' + i["buttons"][1].get() + '", "button3": "' + i["buttons"][2].get() + '", "name": "' + i["nameEntry"].get() + '", "notify": "' + i["notify_check_var"].get() + '", "tgBOT": "' + i["tgBOT_check_var"].get() + '", "trayCommand": "' + i["trayCommand_check_var"].get() + '" }')
-            file.close()
-
-            possibleTasksForBot[i["nameEntry"].get()] = {"urlEntry": i["urlEntry"].get(), "tgBOT_check_var": i["tgBOT_check_var"].get()}
-
-        if self.saveButton._text[-1] == STAR_ICON:
-            self.saveButton.configure(fg_color=RED_COLOR, hover_color=RED_HOVER_COLOR, text=Localize("save"))
-
-        self.saveButton.configure(fg_color=GREEN_COLOR, hover_color=GREEN_HOVER_COLOR)
-
-    def DeleteTask(self, name, frame):
-        if name != "":
-            result = askyesno(title=Localize("DeleteTaskQ"), message=Localize("DeleteTaskQ"))
-            if result:
-                finded = False
-
-                for filename in os.listdir(os.getcwd() + "\\Tasks"):
-                    f = os.path.join(os.getcwd() + "\\Tasks\\", filename)
-                    if os.path.isfile(f) and name + ".vbs" in filename:
-                        finded = True
-
-                if finded:
-                    os.remove(os.getcwd() + "\\Tasks\\" + name + ".vbs")
-
-                finded = False
-
-                for filename in os.listdir(os.getcwd() + "\\Tasks"):
-                    f = os.path.join(os.getcwd() + "\\Tasks\\", filename)
-                    if os.path.isfile(f) and name + ".settings" in filename:
-                        finded = True
-
-                if finded:
-                    os.remove(os.getcwd() + "\\Tasks\\" + name + ".settings")
-            else:
-                return
-
-            for widget in self.frame.winfo_children():
-                if widget == frame:
-                    for task in self.allTasksUI:
-                        if task["urlEntry"].get() == name:
-                            self.allTasksUI.remove(task)
-                            break
-                    widget.destroy()
-
-    def AddTaskUI(self, taskURL, scriptText, settingsFromFile, number):
-        if settingsFromFile == None:
-            settingsFromFile = { "button1": "None", "button2": "None", "button3": "None", "name": "Test" }
-
-        frame = CTkFrame(self.frame, bg_color="transparent", fg_color=FOREGROUND_COLOR)
-
-        leftFrame = CTkFrame(frame, bg_color="transparent", fg_color=FOREGROUND_COLOR)
-
-        scNumber = CTkLabel(leftFrame, text=Localize("scNumber") + str(number + 1), font=("Arial", 17), text_color="#ffffff")
-        URLlabel = CTkLabel(leftFrame, text=Localize("URL"), font=("Arial", 17), text_color="#ffffff")
-        Namelabel = CTkLabel(leftFrame, text=Localize("Name"), font=("Arial", 17), text_color="#ffffff")
-
-        leftFrame.grid(row=0, column=0, pady=3, padx=5)
-
-        scNumber.grid(row=0, column=0, pady=35, padx=5)
-        URLlabel.grid(row=1, column=0, pady=1, padx=5)
-        Namelabel.grid(row=2, column=0, pady=1, padx=5)
-
-        urlEntry = CTkEntry(leftFrame, width=200, font=("Arial", 18))
-        urlEntry.grid(row=1, column=1, pady=1, padx=5)
-        urlEntry.bind('<KeyRelease>', self.typing)
-        urlEntry.bind("<MouseWheel>", self._on_mousewheel)
-        ToolTip(urlEntry, msg=Localize("urlTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
-        if taskURL != "":
-            urlEntry.insert(0, taskURL)
-        else:
-            urlEntry.insert(0, "Test")
-
-        nameEntry = CTkEntry(leftFrame, width=200, font=("Arial", 18))
-        nameEntry.grid(row=2, column=1, pady=1, padx=5)
-        nameEntry.bind('<KeyRelease>', self.typing)
-        nameEntry.bind("<MouseWheel>", self._on_mousewheel)
-        nameEntry.insert(0, settingsFromFile["name"])
-        ToolTip(nameEntry, msg=Localize("nameTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
-        notifyLabel = CTkLabel(leftFrame, text=Localize("Notify"), font=("Arial", 17), text_color="#ffffff")
-        notifyLabel.grid(row=3, column=0, pady=1, padx=5)
-
-        notify_check_var = customtkinter.StringVar(value=str(settingsFromFile["notify"]) if "notify" in settingsFromFile.keys() else "True")
-        notifyCheckbox = customtkinter.CTkCheckBox(leftFrame, text="", command=lambda: self.typing(None),
-                                             variable=notify_check_var, onvalue="True", offvalue="False")
-        notifyCheckbox.grid(row=3, column=1, pady=1, padx=5)
-
-        ToolTip(notifyLabel, msg=Localize("NotifyCheckboxTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(notifyCheckbox, msg=Localize("NotifyCheckboxTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
-        tgBOTLabel = CTkLabel(leftFrame, text=Localize("ShowInTG_BOT"), font=("Arial", 17), text_color="#ffffff")
-        tgBOTLabel.grid(row=4, column=0, pady=1, padx=5)
-
-        tgBOT_check_var = customtkinter.StringVar(value=str(settingsFromFile["tgBOT"]) if "tgBOT" in settingsFromFile.keys() else "True")
-        tgBOTCheckbox = customtkinter.CTkCheckBox(leftFrame, text="", command=lambda: self.typing(None),
-                                             variable=tgBOT_check_var, onvalue="True", offvalue="False")
-        tgBOTCheckbox.grid(row=4, column=1, pady=1, padx=5)
-
-        ToolTip(tgBOTLabel, msg=Localize("ShowInTG_BOTTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(tgBOTCheckbox, msg=Localize("ShowInTG_BOTTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
-        trayCommandLabel = CTkLabel(leftFrame, text=Localize("ShowInTray"), font=("Arial", 17), text_color="#ffffff")
-        trayCommandLabel.grid(row=5, column=0, pady=1, padx=5)
-
-        trayCommand_check_var = customtkinter.StringVar(value=str(settingsFromFile["trayCommand"]) if "trayCommand" in settingsFromFile.keys() else "True")
-        trayCommandCheckbox = customtkinter.CTkCheckBox(leftFrame, text="", command=lambda: self.typing(None),
-                                             variable=trayCommand_check_var, onvalue="True", offvalue="False")
-        trayCommandCheckbox.grid(row=5, column=1, pady=1, padx=5)
-
-        ToolTip(trayCommandLabel, msg=Localize("ShowInTrayTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-        ToolTip(trayCommandCheckbox, msg=Localize("ShowInTrayTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
-        deleteButton = customtkinter.CTkButton(leftFrame,
-                                               text=Localize('delete'),
-                                               fg_color=RED_COLOR,
-                                               hover_color=RED_HOVER_COLOR,
-                                               command=lambda: self.DeleteTask(str(urlEntry.get()).replace(" ", SPACE_SYMBOL), frame)
-                                               )
-
-        runButton = customtkinter.CTkButton(leftFrame,
-                                               text=Localize('run'),
-                                               command=lambda: StartTask(str(urlEntry.get()).replace(" ", SPACE_SYMBOL))
-                                               )
-
-        deleteButton.grid(row=6, column=0, pady=35, padx=5)
-        deleteButton.bind("<MouseWheel>", self._on_mousewheel)
-
-        runButton.grid(row=6, column=1, pady=35, padx=5)
-        runButton.bind("<MouseWheel>", self._on_mousewheel)
-
-        leftFrame.grid(row=0, column=0, pady=1, padx=5)
-
-        notifyCheckbox.bind("<MouseWheel>", self._on_mousewheel)
-        notifyLabel.bind("<MouseWheel>", self._on_mousewheel)
-        scNumber.bind("<MouseWheel>", self._on_mousewheel)
-        leftFrame.bind("<MouseWheel>", self._on_mousewheel)
-
-        centerFrame = CTkFrame(frame, bg_color="transparent", fg_color=FOREGROUND_COLOR)
-
-        label3 = CTkLabel(centerFrame, text=Localize("VBSScript"), font=("Arial", 17), text_color="#ffffff")
-        label3.grid(row=0, column=0, pady=1, padx=5)
-        ToolTip(label3, msg=Localize("VBSScriptTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11))
-
-        self.lastNumber = number
-
-        script = SimpleLineNumberedTextbox(centerFrame, self, width=1000, height=200)
-        script.grid(row=1, column=0, pady=3, padx=5)
-
-        if scriptText != "":
-            script.insert(scriptText.rstrip())
-        else:
-            script.insert("""Dim WShell
-Set WShell = CreateObject("WScript.Shell")
-
-WShell.Run("notepad.exe")""")
-            self.typing(self)
-
-        script._update_line_numbers()
-        script._update_comments()
-
-        centerFrame.grid(row=0, column=1, pady=1, padx=5)
-
-        rightFrame = CTkFrame(frame, fg_color=FOREGROUND_COLOR)
-
-        label4 = CTkLabel(rightFrame, text=Localize("buttons"), font=("Arial", 17), text_color="#ffffff")
-        label4.grid(row=0, column=0, pady=1, padx=5)
-        ToolTip(label4, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
-
-        vb1 = settingsFromFile["button1"]
-        vb2 = settingsFromFile["button2"]
-        vb3 = settingsFromFile["button3"]
-
-        opt1 = MultiColumnOptionMenu(rightFrame, options=buttons, _on_mousewheel=self._on_mousewheel, default_option=vb1, command=lambda e: self.typing(None))
-        opt1.grid(row=1, column=0, padx=5, pady=5)
-
-        labelPlus1 = CTkLabel(rightFrame, text="+", font=("Arial", 17), text_color="#ffffff")
-        labelPlus1.grid(row=2, column=0, pady=1, padx=5)
-        labelPlus1.bind("<MouseWheel>", self._on_mousewheel)
-        ToolTip(labelPlus1, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
-
-        opt2 = MultiColumnOptionMenu(rightFrame, options=buttons, _on_mousewheel=self._on_mousewheel, default_option=vb2, command=lambda e: self.typing(None))
-        opt2.grid(row=3, column=0, padx=5, pady=5)
-
-        labelPlus2 = CTkLabel(rightFrame, text="+", font=("Arial", 17), text_color="#ffffff")
-        labelPlus2.grid(row=4, column=0, pady=1, padx=5)
-        labelPlus2.bind("<MouseWheel>", self._on_mousewheel)
-        ToolTip(labelPlus2, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
-
-        opt3 = MultiColumnOptionMenu(rightFrame, options=buttons, _on_mousewheel=self._on_mousewheel, default_option=vb3, command=lambda e: self.typing(None))
-        opt3.grid(row=5, column=0, padx=5, pady=5)
-
-        rightFrame.grid(row=0, column=3)
-        ToolTip(rightFrame, msg=Localize("buttonsTooltip"), fg="#ffffff", bg="#1c1c1c", font=("Arial", 11), x_offset=-500)
-
-        rightFrame.bind("<MouseWheel>", self._on_mousewheel)
-
-        URLlabel.bind("<MouseWheel>", self._on_mousewheel)
-        Namelabel.bind("<MouseWheel>", self._on_mousewheel)
-        label3.bind("<MouseWheel>", self._on_mousewheel)
-        label4.bind("<MouseWheel>", self._on_mousewheel)
-
-        frame.pack(side='top', anchor='center', pady=10, ipadx=5)
-        frame.bind("<MouseWheel>", self._on_mousewheel)
-
-        possibleTasksForBot[settingsFromFile["name"]] = {"urlEntry": urlEntry.get(), "tgBOT_check_var": tgBOT_check_var.get()}
-
-        self.allTasksUI.append({"urlEntry": urlEntry, "script": script, "buttons": (opt1, opt2, opt3),
-                                "deleteButton": deleteButton, "nameEntry": nameEntry,
-                                "notify_check_var": notify_check_var, "tgBOT_check_var": tgBOT_check_var, "trayCommand_check_var": trayCommand_check_var})
-
-    def _on_mousewheel(self, event):
-        self.myCanvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
-
-    def __init__(self):
-        super().__init__()
-        self.title(PROGRAM_NAME + " | v" + PROGRAM_VERSION)
-        self.iconbitmap(default=ICON)
-
-        self.configure(fg_color=BACKGROUND_COLOR)
-
-        frame = customtkinter.CTkFrame(self, fg_color=FOREGROUND_COLOR)
-        customtkinter.CTkButton(frame, text=Localize("settings"), command=self.open_SettingsWindow).grid(row=0, column=0, pady=10, padx=5)
-        customtkinter.CTkButton(frame, text=Localize("log"), command=self.open_LogWindow).grid(row=0, column=1, pady=10, padx=5)
-
-        CTkButton(frame, text=Localize("addTask"), command=lambda: self.AddTaskUI("", "", None, self.lastNumber + 1)).grid(row=0, column=2, pady=10, padx=5)
-        self.saveButton = CTkButton(frame, text=Localize("save"), fg_color=GREEN_COLOR, hover_color=GREEN_HOVER_COLOR, command=self.Save)
-        self.saveButton.grid(row=0, column=3, pady=10, padx=5)
-        CTkButton(frame, text=Localize("hidetotray"), command=self.withdraw_window).grid(row=0, column=4, pady=10, padx=25)
-        CTkButton(frame, text=Localize("kill") + ' ' + PROGRAM_NAME, command=self.QuitProgram, fg_color=RED_COLOR, hover_color=RED_HOVER_COLOR).grid(row=0, column=5, pady=10, padx=30)
-        frame.pack()
-
-        #region SetWindow
-        self.myCanvas = customtkinter.CTkCanvas(self, width=1515, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
-        self.frame = customtkinter.CTkFrame(self.myCanvas, width=1170, fg_color=BACKGROUND_COLOR)
-        self.vsb = customtkinter.CTkScrollbar(self, command=self.myCanvas.yview, fg_color=BACKGROUND_COLOR, minimum_pixel_length=25)
-        self.myCanvas.configure(yscrollcommand=self.vsb.set)
-
-        self.vsb.pack(side="right", fill="y", ipadx=1, anchor="n")
-
-        leftScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
-        leftScroll.pack(side="left", fill="x", expand=True, anchor="n")
-
-        self.myCanvas.pack(side="left", anchor="n")
-        self.myCanvas.create_window((0, 0), window=self.frame, anchor="n", tags="self.frame")
-
-        rightScroll = customtkinter.CTkCanvas(self, width=1, height=1070, bd=0, bg=BACKGROUND_COLOR, highlightbackground=BACKGROUND_COLOR, highlightcolor=BACKGROUND_COLOR)
-        rightScroll.pack(side="left", fill="x", expand=True, anchor="n")
-
-        self.frame.bind("<Configure>", self.onFrameConfigure)
-
-        leftScroll.bind("<MouseWheel>", self._on_mousewheel)
-        rightScroll.bind("<MouseWheel>", self._on_mousewheel)
-        self.myCanvas.bind("<MouseWheel>", self._on_mousewheel)
-        self.frame.bind("<MouseWheel>", self._on_mousewheel)
-
-        #endregion
-
-        scaling_factor = get_windows_scaling()
-
-        if scaling_factor == 1:
-            self.geometry("1555x750")
-        elif scaling_factor == 1.25:
-            self.geometry("1255x600")
-            customtkinter.set_widget_scaling(0.8)
-        elif scaling_factor == 1.5:
-            self.geometry("1055x500")
-            customtkinter.set_widget_scaling(0.6)
-        elif scaling_factor == 0.75:
-            self.geometry("1755x700")
-            customtkinter.set_widget_scaling(1.2)
-
-        self.protocol('WM_DELETE_WINDOW', self.withdraw_window)
-
-        self.ReadSavedTasks()
-
-        if closeToTrayOnStart == "True":
-            self.withdraw_window()
-
-        logToFile(Localize("runOn") + " " + str(PORT))
-
-        self.process_tray_queue()
-
-        self.mainloop()
+    icon = TrayIcon(PROGRAM_NAME, Image.open(ICON_RAW), PROGRAM_NAME, menu=BuildTrayMenu(LoadTasks()))
+    icon._message_handlers[WM_QUERYENDSESSION] = lambda wparam, lparam: 1
+    icon._message_handlers[WM_ENDSESSION] = OnEndSession
+
+    trayIcon = icon
+    icon.run()
+
+def QuitProgram():
+    logToFile("Closing " + PROGRAM_NAME)
+    CloseWindow()
+    HideTray()
+    ExitProgram()
+
+def SelfCommand(*args):
+    if getattr(sys, "frozen", False):
+        return [sys.executable] + list(args)
+    return [sys.executable, os.path.abspath(__file__)] + list(args)
+
+def RestartProgram():
+    logToFile("Restarting " + PROGRAM_NAME)
+    CloseWindow()
+    HideTray()
+    ReleaseSingleInstanceMutex()
+    subprocess.Popen(SelfCommand(RESTART_ARG, SHOW_ARG), creationflags=subprocess.CREATE_NO_WINDOW)
+    ExitProgram()
+#endregion
+
+#region Window process
+guiProcess = None
+guiLock = threading.Lock()
+uiServerPort = 0
+uiToken = secrets.token_urlsafe(24)
+
+def FindProcessWindow(pid):
+    user32 = ctypes.windll.user32
+    found = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    def callback(hwnd, lparam):
+        windowPid = ctypes.c_ulong()
+        user32.GetWindowThreadProcessId(ctypes.c_void_p(hwnd), ctypes.byref(windowPid))
+        if windowPid.value == pid and user32.IsWindowVisible(ctypes.c_void_p(hwnd)):
+            found.append(hwnd)
+            return False
+        return True
+
+    user32.EnumWindows(callback, 0)
+    return found[0] if found else None
+
+def FocusProcessWindow(pid):
+    hwnd = FindProcessWindow(pid)
+    if hwnd is None:
+        return
+
+    user32 = ctypes.windll.user32
+    if user32.IsIconic(ctypes.c_void_p(hwnd)):
+        user32.ShowWindow(ctypes.c_void_p(hwnd), SW_RESTORE)
+    user32.SetForegroundWindow(ctypes.c_void_p(hwnd))
+
+def ShowWindow():
+    global guiProcess
+
+    with guiLock:
+        if guiProcess is not None and guiProcess.poll() is None:
+            FocusProcessWindow(guiProcess.pid)
+            return
+
+        # Разрешаем новому процессу забрать фокус (иначе окно может открыться под другими)
+        with suppress(Exception):
+            ctypes.windll.user32.AllowSetForegroundWindow(ASFW_ANY)
+
+        env = dict(os.environ)
+        env[GUI_PORT_ENV] = str(uiServerPort)
+        env[GUI_TOKEN_ENV] = uiToken
+
+        guiProcess = subprocess.Popen(SelfCommand(GUI_ARG), env=env, creationflags=subprocess.CREATE_NO_WINDOW)
+
+def CloseWindow():
+    with guiLock:
+        if guiProcess is not None and guiProcess.poll() is None:
+            with suppress(Exception):
+                guiProcess.terminate()
+
+def WaitForShowRequests():
+    """Повторный запуск CatPilot.exe не плодит копию, а через это событие просит открыть окно"""
+    kernel32 = ctypes.windll.kernel32
+    event = kernel32.CreateEventW(None, False, False, SHOW_EVENT_NAME)
+    if not event:
+        return
+
+    while True:
+        kernel32.WaitForSingleObject(event, INFINITE)
+        ShowWindow()
+
+def SignalRunningInstance():
+    kernel32 = ctypes.windll.kernel32
+    event = kernel32.OpenEventW(EVENT_MODIFY_STATE, False, SHOW_EVENT_NAME)
+    if event:
+        kernel32.SetEvent(event)
+        kernel32.CloseHandle(event)
+    return bool(event)
+#endregion
+
+#region Window API
+# Отдельный сервер только для окна: слушает 127.0.0.1 на случайном порту и требует токен.
+# Основной Flask (0.0.0.0) запускает задачу на любой /<page>, поэтому смешивать их нельзя
+uiApp = Flask("CatPilotUI")
+monacoArchive = None
+
+UI_MIME_TYPES = {".js": "application/javascript", ".css": "text/css", ".ttf": "font/ttf", ".html": "text/html"}
+
+def UiResponse(content, mimetype, cache=False):
+    response = Response(content, mimetype=mimetype)
+    response.headers["Cache-Control"] = "max-age=86400" if cache else "no-store"
+    return response
+
+def ReadSettingsDict():
+    with open('Settings.json', encoding='utf-8') as file:
+        return json.load(file)
+
+def UiStrings():
+    Localize("show")  # подгружает localizationDict
+    strings = dict(localizationDict.get("English", {}))
+    strings.update(localizationDict.get(LANGUAGE, {}))
+    return strings
+
+@uiApp.before_request
+def CheckUiToken():
+    if request.path.startswith("/api/") and request.headers.get("X-CatPilot-Token") != uiToken:
+        abort(403)
+
+@uiApp.route("/")
+def UiIndex():
+    if request.args.get("token") != uiToken:
+        abort(403)
+
+    from catpilot_ui import INDEX_HTML
+    return UiResponse(INDEX_HTML.replace("__CP_TOKEN__", uiToken).replace("__CP_TITLE__", PROGRAM_NAME + " | v" + PROGRAM_VERSION), "text/html")
+
+@uiApp.route("/app.js")
+def UiScript():
+    from catpilot_ui import APP_JS
+    return UiResponse(APP_JS, "application/javascript")
+
+@uiApp.route("/style.css")
+def UiStyle():
+    from catpilot_ui import STYLE_CSS
+    return UiResponse(STYLE_CSS, "text/css")
+
+@uiApp.route("/vs/<path:path>")
+def UiMonaco(path):
+    global monacoArchive
+
+    if monacoArchive is None:
+        from catpilot_monaco import OpenMonacoArchive
+        monacoArchive = OpenMonacoArchive()
+
+    try:
+        content = monacoArchive.read("vs/" + path)
+    except KeyError:
+        abort(404)
+
+    return UiResponse(content, UI_MIME_TYPES.get(os.path.splitext(path)[1], "application/octet-stream"), cache=True)
+
+@uiApp.route("/api/state")
+def ApiState():
+    Localize("show")
+    return jsonify({
+        "program": PROGRAM_NAME,
+        "version": PROGRAM_VERSION,
+        "port": PORT,
+        "strings": UiStrings(),
+        "languages": languagesList,
+        "buttons": buttons,
+        "settings": ReadSettingsDict(),
+        "tasks": LoadTasks(),
+    })
+
+@uiApp.route("/api/tasks", methods=["PUT"])
+def ApiSaveTasks():
+    error = SaveTasks(request.get_json(force=True).get("tasks", []))
+    if error is not None:
+        return jsonify({"error": error[0], "index": error[1]}), 400
+    return jsonify({"tasks": LoadTasks()})
+
+@uiApp.route("/api/tasks/<url>", methods=["DELETE"])
+def ApiDeleteTask(url):
+    DeleteTaskFiles(url)
+    return jsonify({"ok": True})
+
+@uiApp.route("/api/run/<url>", methods=["POST"])
+def ApiRunTask(url):
+    return jsonify({"message": StartTask(url)})
+
+@uiApp.route("/api/log")
+def ApiLog():
+    open('log.txt', 'a', encoding='utf-8').close()
+    with open("log.txt", "r", encoding='utf-8') as file:
+        return jsonify({"lines": file.read().splitlines()})
+
+@uiApp.route("/api/settings", methods=["PUT"])
+def ApiSaveSettings():
+    raw = request.get_json(force=True)
+
+    try:
+        port = int(str(raw.get("PORT", "")).strip())
+        if not 1 <= port <= 65535:
+            raise ValueError()
+    except ValueError:
+        return jsonify({"error": "PORT: 1-65535"}), 400
+
+    flag = lambda key: "True" if str(raw.get(key, "False")) == "True" else "False"
+    text = lambda key: str(raw.get(key, "")).strip()
+
+    settings = {
+        "PORT": port,
+        "showNotifications": flag("showNotifications"),
+        "closeToTrayOnStart": flag("closeToTrayOnStart"),
+        "language": text("language") if text("language") in languagesList else LANGUAGE,
+        "AllowedTG_IDs": text("AllowedTG_IDs"),
+        "TG_TOKEN": text("TG_TOKEN"),
+        "CheckWorkURL": text("CheckWorkURL"),
+        "AdditionalURL": text("AdditionalURL"),
+        "AutoStart": flag("AutoStart"),
+        "NotifyOnStart": flag("NotifyOnStart"),
+    }
+
+    with open('Settings.json', 'w', encoding='utf-8') as file:
+        json.dump(settings, file, ensure_ascii=False)
+
+    if settings["AutoStart"] == "True":
+        launchWithoutConsole(["cmd", "/c", "LoadOnStartup.vbs"])
+    else:
+        launchWithoutConsole(["cmd", "/c", "NotLoadOnStartup.bat"])
+
+    # Перезапуск после ответа, чтобы окно успело его получить
+    threading.Timer(0.3, RestartProgram).start()
+    return jsonify({"ok": True})
+
+@uiApp.route("/api/quit", methods=["POST"])
+def ApiQuit():
+    threading.Timer(0.3, QuitProgram).start()
+    return jsonify({"ok": True})
+
+def StartUiServer():
+    global uiServerPort
+
+    server = make_server("127.0.0.1", 0, uiApp, threaded=True)
+    uiServerPort = server.server_port
+
+    uiThread = threading.Thread(target=server.serve_forever, name="UiServer")
+    uiThread.daemon = True
+    uiThread.start()
 #endregion
 
 #region Flask
@@ -1494,11 +1087,27 @@ def BotHandler():
 #endregion
 
 if __name__ == "__main__":
-    if AlreadyRunning():
-        logToFile(PROGRAM_NAME + " is already running, second copy closed")
-        with suppress(Exception):
-            Notify(PROGRAM_NAME + " is already running")
+    alreadyRunning = AlreadyRunning()
+
+    if alreadyRunning and RESTART_ARG in sys.argv:
+        # Перезапуск после сохранения настроек: ждём, пока старая копия закроется
+        for attempt in range(50):
+            sleep(0.2)
+            alreadyRunning = AlreadyRunning()
+            if not alreadyRunning:
+                break
+
+    if alreadyRunning:
+        # Уже запущенная копия сама откроет своё окно
+        if SignalRunningInstance():
+            logToFile(PROGRAM_NAME + " is already running, opened its window, second copy closed")
+        else:
+            logToFile(PROGRAM_NAME + " is already running, second copy closed")
+            with suppress(Exception):
+                Notify(PROGRAM_NAME + " is already running")
         ExitProgram()
+
+    ReloadTasks()
 
     flaskThread = threading.Thread(target=flask_main)
     flaskThread.daemon = True
@@ -1516,11 +1125,22 @@ if __name__ == "__main__":
         launchWithoutConsole(["cmd", "/c", "RestartTunnel.vbs"])
 
     if NotifyOnStart == "True":
-        with suppress(Exception):
-            Notify(Localize("NotifyOnStartMessage"))
+        # Notify ждёт, пока уведомление скроется, а иконка трея должна появиться сразу
+        threading.Thread(target=lambda: Notify(Localize("NotifyOnStartMessage")), daemon=True).start()
 
     try:
-        AppWindow()
+        StartUiServer()
+
+        showRequestsThread = threading.Thread(target=WaitForShowRequests)
+        showRequestsThread.daemon = True
+        showRequestsThread.start()
+
+        if closeToTrayOnStart != "True" or SHOW_ARG in sys.argv:
+            ShowWindow()
+
+        logToFile(Localize("runOn") + " " + str(PORT))
+
+        RunTray()
     except Exception:
         logException("main", *sys.exc_info())
         with suppress(Exception):

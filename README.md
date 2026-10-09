@@ -15,6 +15,8 @@ This program allows you to control Windows using VBS scripts via a local network
 
 [Installation](#Installation)
 
+[Window and tray](#Window-and-tray)
+
 [How to write scripts](#How-to-write-scripts)
 
 [Emulating keystrokes](#Emulating-keystrokes)
@@ -39,6 +41,18 @@ This program allows you to control Windows using VBS scripts via a local network
 Download the current build version on [page releases](https://github.com/diemonic1/CatPilot/releases)
 
 Unzip the CatPilot folder anywhere and run CatPilot.exe
+
+> [!NOTE]
+> The program window uses Microsoft Edge WebView2 Runtime. It is built into Windows 11 and is usually already installed on Windows 10 (if the window does not open, install it from the [Microsoft website](https://developer.microsoft.com/microsoft-edge/webview2/))
+
+## Window and tray
+CatPilot runs in the system tray. The window with scripts and settings is a separate process: it is created only when you open it and is completely closed when you close it or click "Hide to tray", so while CatPilot is in the tray, the interface does not consume any resources.
+
+- If "Hide to tray after start" is enabled in the settings, only the tray icon appears at startup, no window is created
+- You can open the window with "Show" in the tray menu, by clicking the tray icon, or simply by running CatPilot.exe again
+- The tray menu contains the scripts with "in tray" enabled. If there is an emoji in the script name, it is shown as the menu item icon
+- In the list of scripts, tags show what is enabled for the script: notify (notification), tray (shown in the tray menu), tg (shown in the telegram bot), keys (keys are emulated). Hover over a tag to see a hint
+- The script editor highlights VBS syntax and suggests ready-made snippets (shell, WShell.Run, WShell.SendKeys, WScript.Sleep and others). Ctrl+S saves the scripts
 
 ## How to write scripts
 VBS allows you to implement most useful scripts. Here is a common template for a script:
@@ -74,9 +88,6 @@ Set WShell = CreateObject("WScript.Shell")
 WShell.Run("notepad.exe")
 ```
 
-> [!TIP]
-> Scripts, names and URLs can be pasted and copied if English input is enabled
-
 The IP address of my computer in the local network is 192.168.0.102, which means I can run the script by creating a GET request (opening it in a browser, for example) to 192.168.0.102:5000/RunNotepad
 After that, my notepad will open.
 
@@ -84,7 +95,7 @@ After that, my notepad will open.
 > Your router can dynamically assign IP addresses to devices, so - to avoid changing the link you run commands from every time - either disable dynamic allocation in its settings, or assign a specific IP to your device
 
 ## Emulating keystrokes
-You can add keys to each script that will be emulated during its execution. For example, by selecting the "f5" key, you can emulate pressing it:
+You can add keys to each script that will be emulated after it is executed successfully. For example, by selecting the "f5" key, you can emulate pressing it:
 | f5 |
 |:-----|
 | + |
@@ -229,7 +240,7 @@ You can get a list of commands in the bot using any of these messages: /start /h
 After a while, the program will delete the message with the list of commands so that you do not accidentally run some command that no longer exists (you can always click on the last message to repeat the execution, including the output of commands).
 
 ## Quick link opening
-If you have connected the bot, you can use the quick link opening. If you send the bot a message that contains http, https or .com, it will open the link in a standard browser.
+If you have connected the bot, you can use the quick link opening. If you send the bot a message that contains http, https, .com or .ru, it will open the link in a standard browser.
 
 > [!TIP]
 > Using quick link opening, you can, for example, click "share video" in the YouTube mobile app and send the link to it to the bot, and then it will immediately open it on the computer
@@ -286,8 +297,8 @@ If you specify an additional request URL in the CatPilot settings, a GET request
 3) Move all files from the CatPilot folder of the new version to the folder where you have CatPilot installed, confirm the replacement of all files (settings, scripts and log will not be replaced)
 4) Run CatPilot again
 
-> [!NOTE]
-> If, when replacing files, the system indicates that the VCRUNTIME140.dll or VCRUNTIME140_1.dll files are occupied by another process, simply skip replacing them, they are not necessary.
+> [!IMPORTANT]
+> Starting with version 2.0.0, the program libraries are in the _internal folder. When updating from version 1.x, do not copy the new version over the old one: delete everything from the CatPilot folder except Settings.json, the Tasks folder, log.txt and your own files (for example RestartTunnel.vbs), and then copy the new version there.
 
 ## Developer information: additional localizations
 The Localization folder stores json files with localized text. You can create a new localization file by specifying the language as the file name and filling in the translation inside (based on the English localization, for example).
@@ -300,20 +311,28 @@ After restarting the program, localization can be selected in the settings.
 ## Developer information: how to build the program
 To build an exe application, use pyinstaller.exe
 
-If you want to somehow modify the program, you need to change the python file CatPilot.py - it contains all the code.
+The code is split into several python files:
+- CatPilot.py - the main program: Flask server, Telegram bot, tray icon and the local API for the window
+- catpilot_gui.py - the settings window (WebView2 via pywebview). It is a separate process (CatPilot.exe --gui) that exists only while the window is open
+- catpilot_ui.py - the window interface (HTML/CSS/JS)
+- catpilot_monaco.py - the Monaco code editor packed into a python module (generated by tools/BuildMonacoBundle.py, do not edit by hand)
+
+Required libraries: `pip install flask pystray pillow pyautogui pyTelegramBotAPI requests win11toast pywebview pyinstaller`
 
 After that:
 1) Open the console as administrator in the folder where CatPilot.py is located
 2) Run the command:
-```pyinstaller.exe —onedir —icon=CatPilot.ico —windowed CatPilot.py```
-3) After the build is complete, the CatPilot folder will appear in the dist folder, this is the finished build
-4) Copy all the contents from the ADD folder to the CatPilot folder, which contains the build (these are additional files of libraries, scripts, localizations, etc., necessary for the program to work)
+```pyinstaller.exe --noconfirm CatPilot.spec```
+3) After the build is complete, the CatPilot folder will appear in the dist folder, this is the finished build. All python libraries and the window interface are already inside it. CatPilot.spec excludes libraries the program does not use (tkinter, numpy, etc.), so build with it rather than with pyinstaller flags: otherwise the spec is overwritten
+4) Copy all the contents from the ADD folder to the CatPilot folder, which contains the build (localizations, the Tasks folder, icons and the LoadOnStartup / NotLoadOnStartup / OpenBrowserLink scripts)
 5) Now the program can be launched as usual using CatPilot.exe
 
 # Документация на русском языке
 Это программа позволяет управлять Windows посредством VBS скриптов через локальную сеть или публичный IP (на подобии webhooks), или с помощью телеграмм бота.
 
 [Установка](#Установка)
+
+[Окно и трей](#Окно-и-трей)
 
 [Как писать скрипты](#Как-писать-скрипты)
 
@@ -339,6 +358,18 @@ After that:
 Скачайте актуальную версию билда на [странице релизов](https://github.com/diemonic1/CatPilot/releases)
 
 Распакуйте папку CatPilot куда угодно и запустите CatPilot.exe
+
+> [!NOTE]
+> Окно программы использует Microsoft Edge WebView2 Runtime. Он встроен в Windows 11 и обычно уже установлен в Windows 10 (если окно не открывается, установите его с [сайта Microsoft](https://developer.microsoft.com/microsoft-edge/webview2/))
+
+## Окно и трей
+CatPilot работает в системном трее. Окно со скриптами и настройками — отдельный процесс: оно создаётся только когда вы его открываете и полностью закрывается, когда вы его закрываете или нажимаете «Скрыть в трей», поэтому пока CatPilot в трее, интерфейс не тратит ресурсы.
+
+- Если в настройках включено «Скрывать в трей после запуска», при старте появляется только иконка в трее, окно не создаётся
+- Открыть окно можно пунктом «Показать» в меню трея, кликом по иконке в трее или просто повторно запустив CatPilot.exe
+- В меню трея находятся скрипты, у которых включено «в трее». Если в имени скрипта есть смайлик, он показывается как иконка пункта меню
+- В списке скриптов теги показывают, что включено у скрипта: notify (уведомление), tray (есть в меню трея), tg (есть в телеграмм боте), keys (эмулируются клавиши). Если навести на тег, появится подсказка
+- Редактор скриптов подсвечивает синтаксис VBS и подсказывает готовые заготовки (shell, WShell.Run, WShell.SendKeys, WScript.Sleep и другие). Ctrl+S сохраняет скрипты
 
 ## Как писать скрипты   
 VBS позволяет реализовать большинство полезных скриптов. Вот обыкновенный шаблон для скрипта:   
@@ -372,9 +403,6 @@ Set WShell = CreateObject("WScript.Shell")
 WShell.Run("notepad.exe")
 ```
    
-> [!TIP]
-> Скрипты, имена и URL можно вставлять и копировать, если включен ввод на английском языке
-
 IP адрес моего компьютера в локальной сети - 192.168.0.102, значит, запустить скрипт я могу создав GET-запрос (открыв в браузере, например) к 192.168.0.102:5000/RunNotepad   
 После этого у меня откроется блокнот.   
 
@@ -382,7 +410,7 @@ IP адрес моего компьютера в локальной сети - 1
 > Ваш роутер может динамически присваивать устройствам IP адреса, поэтому - чтобы не менять каждый раз ссылку, по который вы запускаете команды - либо отключите динамическое распределение в его настройках, либо закрепите за своим устройством конкретный IP   
    
 ## Эмуляция нажатий клавиш
-К каждому скрипту вы можете добавить клавиши, которые будут эмулироваться во время его выполнения. Например, выбрав клавишу "f5" можно эмулировать ее нажатие:  
+К каждому скрипту вы можете добавить клавиши, которые будут эмулироваться после его успешного выполнения. Например, выбрав клавишу "f5" можно эмулировать ее нажатие:  
 |   f5 |
 |:-----|
 |    + |
@@ -527,7 +555,7 @@ ID нужно записывать через запятую, без пробе�
 Через некоторое время программа удалит сообщение со списком команд, чтобы вы случайно не запустили какую-то несуществующую к этому моменту команду (вы всегда можете нажать на последние сообщение, чтобы повторить выполнение, в том числе вывод команд).
 
 ## Быстрое открытие ссылки
-Если вы подключили бот, вы можете воспользоваться быстрым открытием ссылки. Если вы отправите боту сообщение, которое содержит http, https или .com, он откроет ссылку в стандартном браузере.
+Если вы подключили бот, вы можете воспользоваться быстрым открытием ссылки. Если вы отправите боту сообщение, которое содержит http, https, .com или .ru, он откроет ссылку в стандартном браузере.
 
 > [!TIP]
 > Используя быстрое открытие ссылки, вы можете, например, нажать в мобильном приложении YouTube "поделиться видео" и отправить ссылку на него боту, и тогда он сразу откроет его на компьютере
@@ -584,8 +612,8 @@ clo.exe run
 3) Переместите все файлы из папки CatPilot новой версии в папку, где у вас установлен CatPilot, подтвердите замену всех файлов (настройки, скрипты и лог заменяться не будут)
 4) Запустите CatPilot заново
    
-> [!NOTE]
-> Если при замене файлов система укажет, что файлы VCRUNTIME140.dll или VCRUNTIME140_1.dll заняты другим процессом, просто пропустите их замену, они не обязательны.
+> [!IMPORTANT]
+> Начиная с версии 2.0.0 библиотеки программы лежат в папке _internal. При обновлении с версии 1.x не копируйте новую версию поверх старой: удалите из папки CatPilot всё, кроме Settings.json, папки Tasks, log.txt и ваших собственных файлов (например RestartTunnel.vbs), и уже после этого скопируйте туда новую версию.
 
 ## Информация для разработчиков: дополнительные локализации
 В папке Localization хранятся json файлы с локализированным текстом. Вы можете создать новый файл локализации, указав в качестве названия файла язык, и заполнив внутри перевод (основываясь на английской локализации, например).
@@ -598,20 +626,26 @@ clo.exe run
 ## Информация для разработчиков: как собрать билд программы
 Для сборки exe приложения используется pyinstaller.exe
 
-Если вы хотите как-то модифицировать программу, вам необходимо изменять python файл CatPilot.py - в нем содержится весь код.
+Код разделён на несколько python файлов:
+- CatPilot.py - основная программа: Flask сервер, телеграмм бот, иконка в трее и локальный API для окна
+- catpilot_gui.py - окно настроек (WebView2 через pywebview). Это отдельный процесс (CatPilot.exe --gui), который существует только пока окно открыто
+- catpilot_ui.py - интерфейс окна (HTML/CSS/JS)
+- catpilot_monaco.py - редактор кода Monaco, упакованный в python модуль (генерируется tools/BuildMonacoBundle.py, вручную не редактировать)
+
+Нужные библиотеки: `pip install flask pystray pillow pyautogui pyTelegramBotAPI requests win11toast pywebview pyinstaller`
 
 После этого:
 1) Откройте консоль от имени администратора в папке, в которой лежит CatPilot.py
 2) Выполните команду:
-```pyinstaller.exe —onedir —icon=CatPilot.ico —windowed CatPilot.py```
-3) После окончания сборки в папке dist появится папка CatPilot, это готовая сборка
-4) Скопируйте из папки ADD все содержимое в папку CatPilot, в которой находится сборка (это дополнительные файлы библиотек, скриптов, локализаций и т.д., нужных для работы программы)
+```pyinstaller.exe --noconfirm CatPilot.spec```
+3) После окончания сборки в папке dist появится папка CatPilot, это готовая сборка. Все python библиотеки и интерфейс окна уже внутри неё. CatPilot.spec исключает библиотеки, которые программе не нужны (tkinter, numpy и т.д.), поэтому собирайте именно через него, а не командой с флагами pyinstaller: иначе spec перезапишется
+4) Скопируйте из папки ADD все содержимое в папку CatPilot, в которой находится сборка (локализации, папка Tasks, иконки и скрипты LoadOnStartup / NotLoadOnStartup / OpenBrowserLink)
 5) Теперь программу можно как обычно запускать с помощью CatPilot.exe
 
 <details>
 <summary>SEO tags / ключевые слова</summary>
 
-**English:** CatPilot, Cat Pilot, Windows remote control, remote control Windows PC, control PC remotely, control computer from phone, control PC from browser, control PC over LAN, control PC over the internet, Windows automation, Windows automation software, PC automation, computer automation, task automation Windows, automate Windows tasks, run script remotely, run script on PC via URL, run script by link, launch program remotely, remote script execution Windows, webhook for Windows, Windows webhook server, HTTP webhook PC, local HTTP server Windows, Flask local server, REST API for Windows, GET request run script, VBS script runner, VBScript launcher, run VBS script, BAT file launcher, run bat file via URL, CMD command remotely, PowerShell remote run, run Python script remotely, pyw script launcher, shutdown PC remotely, remote shutdown Windows, restart computer remotely, reboot PC remotely, sleep PC remotely, put computer to sleep remotely, lock PC remotely, turn off computer from phone, turn off PC from Telegram, Telegram bot PC control, control computer with Telegram bot, Telegram bot Windows automation, Telegram remote control PC, keyboard emulation, emulate keypress, emulate hotkeys, keyboard shortcut automation, hotkey server, macro keyboard software, media keys control, volume control remotely, next track hotkey, pause media remotely, system tray app, Windows tray automation app, portable app no installation, open source Windows app, free Windows automation tool, self-hosted automation, smart home Windows integration, Yandex Alice PC control, Alice voice assistant computer, voice control PC, IFTTT Windows, Home Assistant Windows control, Node-RED Windows, Zapier webhook PC, Tasker Windows, iOS Shortcuts PC, Stream Deck alternative, Elgato Stream Deck without hardware, Touch Portal alternative, Unified Remote alternative, EventGhost alternative, AutoHotkey alternative, Laitis alternative, remote desktop alternative, lightweight alternative to TeamViewer AnyDesk RDP, cloudpub tunnel, ngrok alternative for PC control, port forwarding remote control, uptime monitor ping, cronitor ping, Python Flask tkinter customtkinter pystray pyautogui telebot app, Windows 10 Windows 11 utility, MIT license
+**English:** CatPilot, Cat Pilot, Windows remote control, remote control Windows PC, control PC remotely, control computer from phone, control PC from browser, control PC over LAN, control PC over the internet, Windows automation, Windows automation software, PC automation, computer automation, task automation Windows, automate Windows tasks, run script remotely, run script on PC via URL, run script by link, launch program remotely, remote script execution Windows, webhook for Windows, Windows webhook server, HTTP webhook PC, local HTTP server Windows, Flask local server, REST API for Windows, GET request run script, VBS script runner, VBScript launcher, run VBS script, BAT file launcher, run bat file via URL, CMD command remotely, PowerShell remote run, run Python script remotely, pyw script launcher, shutdown PC remotely, remote shutdown Windows, restart computer remotely, reboot PC remotely, sleep PC remotely, put computer to sleep remotely, lock PC remotely, turn off computer from phone, turn off PC from Telegram, Telegram bot PC control, control computer with Telegram bot, Telegram bot Windows automation, Telegram remote control PC, keyboard emulation, emulate keypress, emulate hotkeys, keyboard shortcut automation, hotkey server, macro keyboard software, media keys control, volume control remotely, next track hotkey, pause media remotely, system tray app, Windows tray automation app, portable app no installation, open source Windows app, free Windows automation tool, self-hosted automation, smart home Windows integration, Yandex Alice PC control, Alice voice assistant computer, voice control PC, IFTTT Windows, Home Assistant Windows control, Node-RED Windows, Zapier webhook PC, Tasker Windows, iOS Shortcuts PC, Stream Deck alternative, Elgato Stream Deck without hardware, Touch Portal alternative, Unified Remote alternative, EventGhost alternative, AutoHotkey alternative, Laitis alternative, remote desktop alternative, lightweight alternative to TeamViewer AnyDesk RDP, cloudpub tunnel, ngrok alternative for PC control, port forwarding remote control, uptime monitor ping, cronitor ping, Python Flask pywebview WebView2 Monaco pystray pyautogui telebot app, Windows 10 Windows 11 utility, MIT license
 
-**Русский:** CatPilot, Кэт Пилот, удалённое управление компьютером, удаленное управление Windows, управление ПК с телефона, управление компьютером через браузер, управление компьютером по локальной сети, управление компьютером через интернет, автоматизация Windows, автоматизация компьютера, программа для автоматизации Windows, автоматизация задач Windows, запуск скриптов удалённо, запуск скрипта по ссылке, запуск скрипта по URL, запустить программу удалённо, удалённый запуск скриптов Windows, вебхуки для Windows, вебхук для компьютера, локальный сервер на компьютере, локальный HTTP сервер Windows, Flask сервер, API для Windows, GET запрос запуск скрипта, VBS скрипты, запуск VBS скрипта, запуск BAT файла по ссылке, выполнить CMD команду удалённо, запуск PowerShell удалённо, запуск Python скрипта удалённо, выключить компьютер удалённо, выключить компьютер с телефона, выключить ПК через телеграм, перезагрузить компьютер удалённо, перезагрузить ПК по ссылке, усыпить компьютер удалённо, заблокировать компьютер удалённо, телеграм бот для управления компьютером, управление ПК через телеграм бота, телеграм бот автоматизация Windows, эмуляция нажатия клавиш, эмуляция горячих клавиш, нажатие клавиш по сети, сочетания клавиш автоматизация, макросы для клавиатуры, управление медиаклавишами, управление громкостью удалённо, следующий трек горячая клавиша, поставить музыку на паузу удалённо, программа в трее, приложение в системном трее, портативная программа без установки, программа с открытым исходным кодом, бесплатная программа для автоматизации, self-hosted автоматизация, умный дом и Windows, Яндекс Алиса управление компьютером, голосовое управление компьютером, Алиса выключи компьютер, IFTTT Windows, Home Assistant управление Windows, Node-RED Windows, Zapier вебхук ПК, Tasker Windows, Shortcuts iOS управление ПК, аналог Stream Deck, Stream Deck без железа, аналог Touch Portal, аналог Unified Remote, аналог EventGhost, аналог AutoHotkey, аналог Laitis, аналог удалённого рабочего стола, лёгкая замена TeamViewer AnyDesk RDP, туннель cloudpub, аналог ngrok для управления ПК, проброс портов удалённое управление, мониторинг доступности, пинг cronitor, программа на Python Flask tkinter customtkinter pystray pyautogui telebot, утилита для Windows 10 и Windows 11, лицензия MIT
+**Русский:** CatPilot, Кэт Пилот, удалённое управление компьютером, удаленное управление Windows, управление ПК с телефона, управление компьютером через браузер, управление компьютером по локальной сети, управление компьютером через интернет, автоматизация Windows, автоматизация компьютера, программа для автоматизации Windows, автоматизация задач Windows, запуск скриптов удалённо, запуск скрипта по ссылке, запуск скрипта по URL, запустить программу удалённо, удалённый запуск скриптов Windows, вебхуки для Windows, вебхук для компьютера, локальный сервер на компьютере, локальный HTTP сервер Windows, Flask сервер, API для Windows, GET запрос запуск скрипта, VBS скрипты, запуск VBS скрипта, запуск BAT файла по ссылке, выполнить CMD команду удалённо, запуск PowerShell удалённо, запуск Python скрипта удалённо, выключить компьютер удалённо, выключить компьютер с телефона, выключить ПК через телеграм, перезагрузить компьютер удалённо, перезагрузить ПК по ссылке, усыпить компьютер удалённо, заблокировать компьютер удалённо, телеграм бот для управления компьютером, управление ПК через телеграм бота, телеграм бот автоматизация Windows, эмуляция нажатия клавиш, эмуляция горячих клавиш, нажатие клавиш по сети, сочетания клавиш автоматизация, макросы для клавиатуры, управление медиаклавишами, управление громкостью удалённо, следующий трек горячая клавиша, поставить музыку на паузу удалённо, программа в трее, приложение в системном трее, портативная программа без установки, программа с открытым исходным кодом, бесплатная программа для автоматизации, self-hosted автоматизация, умный дом и Windows, Яндекс Алиса управление компьютером, голосовое управление компьютером, Алиса выключи компьютер, IFTTT Windows, Home Assistant управление Windows, Node-RED Windows, Zapier вебхук ПК, Tasker Windows, Shortcuts iOS управление ПК, аналог Stream Deck, Stream Deck без железа, аналог Touch Portal, аналог Unified Remote, аналог EventGhost, аналог AutoHotkey, аналог Laitis, аналог удалённого рабочего стола, лёгкая замена TeamViewer AnyDesk RDP, туннель cloudpub, аналог ngrok для управления ПК, проброс портов удалённое управление, мониторинг доступности, пинг cronitor, программа на Python Flask pywebview WebView2 Monaco pystray pyautogui telebot, утилита для Windows 10 и Windows 11, лицензия MIT
 </details>

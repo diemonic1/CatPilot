@@ -60,5 +60,22 @@
   "RunAtStart": "Exécuter au démarrage du système",
   "NotifyOnStart": "Notifier au démarrage",
   "NotifyOnStartToolTip": "Immédiatement après le démarrage du programme, une notification est envoyée pour l'indiquer",
-  "NotifyOnStartMessage": "Prêt à fonctionner"
+  "NotifyOnStartMessage": "Prêt à fonctionner",
+    "search": "Rechercher",
+    "noTasks": "Aucune tâche pour l'instant",
+    "selectTask": "Sélectionnez une tâche à gauche ou créez-en une nouvelle",
+    "saved": "Enregistré",
+    "cancel": "Annuler",
+    "close": "Fermer",
+    "refresh": "Actualiser",
+    "unsavedCloseQ": "Des modifications ne sont pas enregistrées. Fermer la fenêtre sans enregistrer ?",
+    "unsavedSettingsQ": "Les modifications non enregistrées des tâches seront perdues après le redémarrage. Continuer ?",
+    "runSavedVersion": "La tâche a des modifications non enregistrées : la version enregistrée est exécutée",
+    "notSavedYet": "Enregistrez d'abord la tâche",
+    "connectionLost": "Pas de connexion avec CatPilot",
+    "restarting": "Redémarrage...",
+    "tagNotifyTooltip": "Affiche une notification lors de l'exécution du script",
+    "tagTrayTooltip": "Affiché dans le menu de la zone de notification",
+    "tagTgTooltip": "Affiché dans la liste des commandes du bot Telegram",
+    "tagKeysTooltip": "Appuie sur des touches après l'exécution du script"
 }

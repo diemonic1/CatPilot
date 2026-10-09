@@ -60,5 +60,22 @@
     "RunAtStart": "Beim Systemstart ausführen",
     "NotifyOnStart": "Beim Start benachrichtigen",
     "NotifyOnStartToolTip": "Unmittelbar nach dem Start des Programms wird eine Benachrichtigung gesendet, dass es einsatzbereit ist",
-    "NotifyOnStartMessage": "Startbereit"
+    "NotifyOnStartMessage": "Startbereit",
+    "search": "Suche",
+    "noTasks": "Noch keine Aufgaben",
+    "selectTask": "Wählen Sie links eine Aufgabe aus oder erstellen Sie eine neue",
+    "saved": "Gespeichert",
+    "cancel": "Abbrechen",
+    "close": "Schließen",
+    "refresh": "Aktualisieren",
+    "unsavedCloseQ": "Es gibt ungespeicherte Änderungen. Fenster ohne Speichern schließen?",
+    "unsavedSettingsQ": "Ungespeicherte Änderungen an Aufgaben gehen nach dem Neustart verloren. Fortfahren?",
+    "runSavedVersion": "Die Aufgabe hat ungespeicherte Änderungen: Die gespeicherte Version wird ausgeführt",
+    "notSavedYet": "Speichern Sie die Aufgabe zuerst",
+    "connectionLost": "Keine Verbindung zu CatPilot",
+    "restarting": "Neustart...",
+    "tagNotifyTooltip": "Zeigt beim Ausführen des Skripts eine Benachrichtigung an",
+    "tagTrayTooltip": "Wird im Tray-Menü angezeigt",
+    "tagTgTooltip": "Wird in der Befehlsliste des Telegram-Bots angezeigt",
+    "tagKeysTooltip": "Drückt nach dem Ausführen des Skripts Tasten"
 }

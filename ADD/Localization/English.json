@@ -60,5 +60,22 @@
     "RunAtStart": "Run at the start of the system",
     "NotifyOnStart": "Notify at the start",
     "NotifyOnStartToolTip": "Immediately after launching the program, it sends a notification that it is ready to work",
-    "NotifyOnStartMessage": "Ready to work"
+    "NotifyOnStartMessage": "Ready to work",
+    "search": "Search",
+    "noTasks": "No tasks yet",
+    "selectTask": "Select a task on the left or create a new one",
+    "saved": "Saved",
+    "cancel": "Cancel",
+    "close": "Close",
+    "refresh": "Refresh",
+    "unsavedCloseQ": "There are unsaved changes. Close the window without saving?",
+    "unsavedSettingsQ": "Unsaved task changes will be lost after the restart. Continue?",
+    "runSavedVersion": "The task has unsaved changes: the saved version is being run",
+    "notSavedYet": "Save the task first",
+    "connectionLost": "No connection to CatPilot",
+    "restarting": "Restarting...",
+    "tagNotifyTooltip": "Shows a notification when the script runs",
+    "tagTrayTooltip": "Shown in the tray menu",
+    "tagTgTooltip": "Shown in the Telegram bot command list",
+    "tagKeysTooltip": "Presses keys after the script runs"
 }
